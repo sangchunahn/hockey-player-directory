@@ -7,10 +7,11 @@
 //
 // The loader reads the player on the SERVER via getPlayerById, so the first
 // HTML already contains the player's name/number/position. An unknown-but-valid
-// id (e.g. /players/9999) renders a clear not-found state with HTTP 200 — never
-// a 404 or a thrown error (see docs/requirements-brief.md, Locked decisions).
+// id (e.g. /players/9999) renders <NotFoundPlayer> with HTTP 200 — never a 404
+// or a thrown error (see docs/requirements-brief.md, Locked decisions).
 import { createFileRoute, Link } from '@tanstack/react-router'
 
+import { NotFoundPlayer } from '../../components/NotFoundPlayer'
 import { parsePlayerIdParam } from '../../lib/playerParams'
 import { defaultPlayersSearch } from '../../lib/searchSchemas'
 import { getPlayerById } from '../../server/directoryLoader'
@@ -31,6 +32,10 @@ function PlayerDetailPage() {
   const { playerId } = Route.useParams()
   const { player } = Route.useLoaderData()
 
+  if (!player) {
+    return <NotFoundPlayer playerId={playerId} />
+  }
+
   return (
     <section className="mx-auto max-w-3xl">
       <p className="mb-4 text-sm">
@@ -43,49 +48,36 @@ function PlayerDetailPage() {
         </Link>
       </p>
 
-      {player ? (
-        <>
-          <h1 className="text-2xl font-bold text-slate-900">
-            #{player.number} {player.name}
-          </h1>
-          <dl className="mt-3 grid grid-cols-[8rem_1fr] gap-y-1 text-sm text-slate-700">
-            <dt className="text-slate-500">Player id</dt>
-            <dd className="font-mono">{player.id}</dd>
-            <dt className="text-slate-500">Position</dt>
-            <dd>{player.position}</dd>
-            <dt className="text-slate-500">Sweater</dt>
-            <dd>#{player.number}</dd>
-            <dt className="text-slate-500">Team</dt>
-            <dd>{player.team}</dd>
-            <dt className="text-slate-500">Roster status</dt>
-            <dd>{player.status === 'ir' ? 'Injured reserve' : 'Active'}</dd>
-          </dl>
-          <p className="mt-4 rounded-md bg-slate-100 p-3 text-sm text-slate-700">
-            Seed data. Stats and game logs load from a real data source in a
-            later sprint. This URL is bookmarkable and survives a refresh.
-          </p>
-        </>
-      ) : (
-        <>
-          <h1 className="text-2xl font-bold text-slate-900">Player not found</h1>
-          <p className="mt-2 text-slate-600">
-            No player has id{' '}
-            <span className="font-mono font-medium text-slate-900">
-              {playerId}
-            </span>{' '}
-            in the current directory.
-          </p>
-          <p className="mt-4 text-sm">
-            <Link
-              to="/players"
-              search={defaultPlayersSearch()}
-              className="text-sky-700 underline"
-            >
-              Browse all players
-            </Link>
-          </p>
-        </>
-      )}
+      <h1 className="text-2xl font-bold text-slate-900">
+        #{player.number} {player.name}
+      </h1>
+      <dl className="mt-3 grid grid-cols-[8rem_1fr] gap-y-1 text-sm text-slate-700">
+        <dt className="text-slate-500">Player id</dt>
+        <dd className="font-mono">{player.id}</dd>
+        <dt className="text-slate-500">Position</dt>
+        <dd>{player.position}</dd>
+        <dt className="text-slate-500">Sweater</dt>
+        <dd>#{player.number}</dd>
+        <dt className="text-slate-500">Team</dt>
+        <dd>{player.team}</dd>
+        <dt className="text-slate-500">Roster status</dt>
+        <dd>{player.status === 'ir' ? 'Injured reserve' : 'Active'}</dd>
+      </dl>
+
+      <p className="mt-4 text-sm">
+        <Link
+          to="/games"
+          search={{ team: '', date: '', playerId: player.id }}
+          className="font-medium text-sky-700 underline"
+        >
+          View schedule context for #{player.number} {player.name} →
+        </Link>
+      </p>
+
+      <p className="mt-4 rounded-md bg-slate-100 p-3 text-sm text-slate-700">
+        Seed data. Stats and game logs load from a real data source in a later
+        sprint. This URL is bookmarkable and survives a refresh.
+      </p>
     </section>
   )
 }

@@ -18,6 +18,12 @@ export type PlayersSearch = {
 export type GamesSearch = {
   team: string // '' (no filter) or a club code like 'TOR'
   date: string // '' (no filter) or 'YYYY-MM-DD'
+  /**
+   * '' or a player id. The seed games do not reference players, so this does
+   * not filter the list — it only carries "I came from this player's page" so
+   * the games view can show a context banner and a link back to that player.
+   */
+  playerId: string
 }
 
 const PLAYER_POSITIONS: ReadonlySet<string> = new Set(['F', 'D', 'G', 'all'])
@@ -32,6 +38,7 @@ export const defaultPlayersSearch = (): PlayersSearch => ({
 export const defaultGamesSearch = (): GamesSearch => ({
   team: '',
   date: '',
+  playerId: '',
 })
 
 /**
@@ -64,5 +71,13 @@ export function validateGamesSearch(raw: Record<string, unknown>): GamesSearch {
     typeof raw.team === 'string' ? raw.team.trim().toUpperCase() : defaults.team
   const dateRaw = typeof raw.date === 'string' ? raw.date.trim() : ''
   const date = /^\d{4}-\d{2}-\d{2}$/.test(dateRaw) ? dateRaw : defaults.date
-  return { team, date }
+  // The router's default search parser turns a bare numeric value (`?playerId=12`)
+  // into a number, so accept string or number here.
+  const playerId =
+    typeof raw.playerId === 'string'
+      ? raw.playerId.trim()
+      : typeof raw.playerId === 'number'
+        ? String(raw.playerId)
+        : defaults.playerId
+  return { team, date, playerId }
 }
