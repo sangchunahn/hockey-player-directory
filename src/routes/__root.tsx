@@ -17,6 +17,7 @@ import {
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 
+import { AppNav } from '../components/AppNav'
 import appCss from '../styles.css?url'
 
 export const Route = createRootRoute({
@@ -48,17 +49,12 @@ export const Route = createRootRoute({
 function RootLayout() {
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="border-b border-gray-200 px-6 py-4">
+      <header className="border-b border-slate-200 px-6 py-4">
         <p className="text-lg font-semibold">Hockey Ops Directory</p>
-        {/*
-          Primary navigation (Home / Players / Games) is added in a later step
-          using the router's type-safe <Link> helper. This is only a placeholder
-          so the shared layout slot exists now.
-        */}
-        <nav aria-label="Primary" className="mt-1 text-sm text-gray-500">
-          Navigation added in a later step
-        </nav>
       </header>
+
+      {/* Shared, type-safe primary nav — renders on every page. */}
+      <AppNav />
 
       <main className="flex-1 px-6 py-6">
         <Outlet />
