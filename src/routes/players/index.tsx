@@ -1,5 +1,6 @@
 import { createFileRoute, Link, stripSearchParams } from '@tanstack/react-router'
 
+import { listPlayers } from '../../server/directoryLoader'
 import {
   defaultPlayersSearch,
   validatePlayersSearch,
@@ -11,22 +12,15 @@ export const Route = createFileRoute('/players/')({
   // Keep bookmark URLs clean: params equal to the defaults are dropped from
   // the query string (so plain `/players` and `/players?position=F` both work).
   search: { middlewares: [stripSearchParams(defaultPlayersSearch())] },
+  // Pass the validated search into the loader so filtering happens on the
+  // server and the filtered rows are in the first HTML.
+  loaderDeps: ({ search }) => ({
+    position: search.position,
+    status: search.status,
+  }),
+  loader: ({ deps }) => ({ players: listPlayers(deps) }),
   component: PlayersIndexPage,
 })
-
-// Placeholder roster until seed data is wired in a later step. `id` is the
-// path-param value for the bookmarkable detail URL (/players/<id>); `pos` is
-// filtered by the `position` search param.
-const placeholderPlayers: ReadonlyArray<{
-  id: string
-  name: string
-  pos: Exclude<PlayerPosition, 'all'>
-}> = [
-  { id: '12', name: 'Placeholder Forward', pos: 'F' },
-  { id: '27', name: 'Placeholder Defense', pos: 'D' },
-  { id: '31', name: 'Placeholder Goaltender', pos: 'G' },
-  { id: '44', name: 'Placeholder Winger', pos: 'F' },
-]
 
 const POSITION_LABEL: Record<Exclude<PlayerPosition, 'all'>, string> = {
   F: 'Forward',
@@ -34,15 +28,11 @@ const POSITION_LABEL: Record<Exclude<PlayerPosition, 'all'>, string> = {
   G: 'Goaltender',
 }
 
-// Players index (route: `/players`). Static shell for the roster list with
-// type-safe, bookmarkable filters written into the query string.
+// Players index (route: `/players`). Server-rendered roster list with type-safe,
+// bookmarkable filters written into the query string.
 function PlayersIndexPage() {
   const { position, status } = Route.useSearch()
-
-  const visible =
-    position === 'all'
-      ? placeholderPlayers
-      : placeholderPlayers.filter((p) => p.pos === position)
+  const { players } = Route.useLoaderData()
 
   return (
     <section className="mx-auto max-w-3xl">
@@ -55,7 +45,8 @@ function PlayersIndexPage() {
 
       <p className="mt-3 text-sm text-slate-500">
         Active filters: position = <span className="font-mono">{position}</span>,
-        status = <span className="font-mono">{status}</span>
+        status = <span className="font-mono">{status}</span> — {players.length}{' '}
+        {players.length === 1 ? 'player' : 'players'}
       </p>
 
       <nav
@@ -88,30 +79,27 @@ function PlayersIndexPage() {
       </nav>
 
       <ul className="mt-4 divide-y divide-slate-200 rounded-md border border-slate-200">
-        {visible.map((player) => (
+        {players.map((player) => (
           <li key={player.id} className="px-4 py-3">
             <Link
               to="/players/$playerId"
               params={{ playerId: player.id }}
               className="font-medium text-sky-700 underline"
             >
-              {player.name}
+              #{player.number} {player.name}
             </Link>
             <span className="ml-2 text-sm text-slate-500">
-              #{player.id} · {POSITION_LABEL[player.pos]}
+              {POSITION_LABEL[player.position]}
+              {player.status === 'ir' ? ' · IR' : ''}
             </span>
           </li>
         ))}
-        {visible.length === 0 && (
+        {players.length === 0 && (
           <li className="px-4 py-3 text-sm text-slate-500">
-            No placeholder players match this filter.
+            No players match this filter.
           </li>
         )}
       </ul>
-
-      <p className="mt-4 rounded-md bg-slate-100 p-3 text-sm text-slate-700">
-        Placeholder: real player rows (seed data) replace these in a later step.
-      </p>
     </section>
   )
 }

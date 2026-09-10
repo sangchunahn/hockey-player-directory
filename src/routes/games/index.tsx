@@ -1,36 +1,22 @@
 import { createFileRoute, Link, stripSearchParams } from '@tanstack/react-router'
 
+import { listGames } from '../../server/directoryLoader'
 import { defaultGamesSearch, validateGamesSearch } from '../../lib/searchSchemas'
 
 export const Route = createFileRoute('/games/')({
   validateSearch: validateGamesSearch,
   // Drop params equal to the defaults ('' team / '' date) from the URL.
   search: { middlewares: [stripSearchParams(defaultGamesSearch())] },
+  loaderDeps: ({ search }) => ({ team: search.team, date: search.date }),
+  loader: ({ deps }) => ({ games: listGames(deps) }),
   component: GamesIndexPage,
 })
 
-// Placeholder schedule until seed data is wired in a later step. Filtered by
-// the `team` (opponent code) and `date` search params.
-const placeholderGames: ReadonlyArray<{
-  id: string
-  opponent: string
-  team: string
-  date: string
-  home: boolean
-}> = [
-  { id: 'g1', opponent: 'Toronto', team: 'TOR', date: '2026-03-20', home: true },
-  { id: 'g2', opponent: 'Boston', team: 'BOS', date: '2026-03-22', home: false },
-  { id: 'g3', opponent: 'Toronto', team: 'TOR', date: '2026-04-02', home: false },
-]
-
-// Games index (route: `/games`). Static shell for the schedule view with
-// type-safe, bookmarkable team/date filters written into the query string.
+// Games index (route: `/games`). Server-rendered schedule view with type-safe,
+// bookmarkable team/date filters written into the query string.
 function GamesIndexPage() {
   const { team, date } = Route.useSearch()
-
-  const visible = placeholderGames.filter(
-    (g) => (team === '' || g.team === team) && (date === '' || g.date === date),
-  )
+  const { games } = Route.useLoaderData()
 
   return (
     <section className="mx-auto max-w-3xl">
@@ -43,7 +29,8 @@ function GamesIndexPage() {
       <p className="mt-3 text-sm text-slate-500">
         Active filters: team ={' '}
         <span className="font-mono">{team === '' ? '(any)' : team}</span>, date ={' '}
-        <span className="font-mono">{date === '' ? '(any)' : date}</span>
+        <span className="font-mono">{date === '' ? '(any)' : date}</span> —{' '}
+        {games.length} {games.length === 1 ? 'game' : 'games'}
       </p>
 
       <nav aria-label="Game filters" className="mt-2 flex flex-wrap gap-3 text-sm">
@@ -63,27 +50,23 @@ function GamesIndexPage() {
       </nav>
 
       <ul className="mt-4 divide-y divide-slate-200 rounded-md border border-slate-200">
-        {visible.map((game) => (
+        {games.map((game) => (
           <li key={game.id} className="px-4 py-3 text-slate-700">
             <span className="font-medium text-slate-900">
-              {game.home ? 'vs' : '@'} {game.opponent}
+              {game.venue === 'home' ? 'vs' : '@'} {game.opponent}
             </span>
             <span className="ml-2 text-sm text-slate-500">
-              {game.team} · {game.date}
+              {game.opponentCode} · {game.date} ·{' '}
+              {game.status === 'final' ? 'Final' : 'Scheduled'}
             </span>
           </li>
         ))}
-        {visible.length === 0 && (
+        {games.length === 0 && (
           <li className="px-4 py-3 text-sm text-slate-500">
-            No placeholder games match this filter.
+            No games match this filter.
           </li>
         )}
       </ul>
-
-      <p className="mt-4 rounded-md bg-slate-100 p-3 text-sm text-slate-700">
-        Placeholder: real schedule rows (seed data) replace these in a later
-        step.
-      </p>
     </section>
   )
 }
