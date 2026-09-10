@@ -10,6 +10,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 
 import { parsePlayerIdParam } from '../../lib/playerParams'
+import { defaultPlayersSearch } from '../../lib/searchSchemas'
 
 export const Route = createFileRoute('/players/$playerId')({
   params: {
@@ -28,7 +29,11 @@ function PlayerDetailPage() {
   return (
     <section className="mx-auto max-w-3xl">
       <p className="mb-4 text-sm">
-        <Link to="/players" className="text-sky-700 underline">
+        <Link
+          to="/players"
+          search={defaultPlayersSearch()}
+          className="text-sky-700 underline"
+        >
           ← Back to players
         </Link>
       </p>

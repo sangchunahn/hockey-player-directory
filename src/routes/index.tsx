@@ -1,5 +1,10 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 
+import {
+  defaultGamesSearch,
+  defaultPlayersSearch,
+} from '../lib/searchSchemas'
+
 export const Route = createFileRoute('/')({ component: HomePage })
 
 // Home / directory landing (route: `/`). Static shell — real directory counts
@@ -12,11 +17,19 @@ function HomePage() {
       </h1>
       <p className="mt-2 text-slate-600">
         The staff landing page for the roster and the schedule. Open{' '}
-        <Link to="/players" className="text-sky-700 underline">
+        <Link
+          to="/players"
+          search={defaultPlayersSearch()}
+          className="text-sky-700 underline"
+        >
           Players
         </Link>{' '}
         for the directory list, or{' '}
-        <Link to="/games" className="text-sky-700 underline">
+        <Link
+          to="/games"
+          search={defaultGamesSearch()}
+          className="text-sky-700 underline"
+        >
           Games
         </Link>{' '}
         for recent and upcoming matchups.
