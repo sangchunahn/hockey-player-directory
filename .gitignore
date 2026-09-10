@@ -3,7 +3,6 @@ node_modules
 dist
 dist-ssr
 *.local
-.env
 .nitro
 .tanstack
 .wrangler
@@ -11,6 +10,11 @@ dist-ssr
 .vinxi
 __unconfig*
 todos.json
+
+# Env files — never commit real secrets. .env.example IS tracked (Sprint 2).
+.env
+.env.*
+!.env.example
 
 # Deploy / misc
 .vercel
