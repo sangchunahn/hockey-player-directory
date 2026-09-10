@@ -7,9 +7,9 @@ Date completed: 2026-09-09
 | Item | Value |
 |------|--------|
 | Operating system | Windows 11 Pro (build 10.0.26200) |
-| Code editor | Cursor 2.3.30 (VS Code 1.116.0 also installed) |
+| Code editor | Visual Studio Code 1.116.0 |
 | Editor can open a whole folder? | Yes |
-| Terminal app used | Integrated terminal on Windows 11 — Git Bash and PowerShell |
+| Terminal app used | VS Code integrated terminal on Windows 11 — Git Bash and PowerShell |
 
 ## Project home
 
