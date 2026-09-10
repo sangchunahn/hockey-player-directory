@@ -1,4 +1,19 @@
-import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
+// Root route — the top-level layout for every page in the app.
+//
+// Two pieces here:
+//   * shellComponent (RootDocument) renders the HTML document (<html>/<head>/<body>).
+//   * component (RootLayout) renders the shared VISIBLE shell: a "Hockey Ops
+//     Directory" header, a placeholder for primary navigation, and an <Outlet />
+//     where each page (/, /players, /players/$playerId, /games) is shown.
+//
+// Keep this file a SHELL only. No player or games data, tables, or fetching
+// live here — those belong in the individual route files (later steps).
+import {
+  HeadContent,
+  Outlet,
+  Scripts,
+  createRootRoute,
+} from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 
@@ -15,7 +30,7 @@ export const Route = createRootRoute({
         content: 'width=device-width, initial-scale=1',
       },
       {
-        title: 'TanStack Start Starter',
+        title: 'Hockey Ops Player Directory',
       },
     ],
     links: [
@@ -26,8 +41,33 @@ export const Route = createRootRoute({
     ],
   }),
   shellComponent: RootDocument,
+  component: RootLayout,
 })
 
+// Shared chrome for the whole directory. Child routes render through <Outlet />.
+function RootLayout() {
+  return (
+    <div className="min-h-screen flex flex-col">
+      <header className="border-b border-gray-200 px-6 py-4">
+        <p className="text-lg font-semibold">Hockey Ops Directory</p>
+        {/*
+          Primary navigation (Home / Players / Games) is added in a later step
+          using the router's type-safe <Link> helper. This is only a placeholder
+          so the shared layout slot exists now.
+        */}
+        <nav aria-label="Primary" className="mt-1 text-sm text-gray-500">
+          Navigation added in a later step
+        </nav>
+      </header>
+
+      <main className="flex-1 px-6 py-6">
+        <Outlet />
+      </main>
+    </div>
+  )
+}
+
+// The HTML document shell. `children` is the router tree (RootLayout + pages).
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
