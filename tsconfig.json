@@ -9,7 +9,9 @@
       "@/*": ["./src/*"]
     },
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "types": ["vite/client"],
+    // "node" types are needed for `process.env` in server-only modules
+    // (src/config/env.ts). @types/node is already a devDependency.
+    "types": ["vite/client", "node"],
 
     /* Bundler mode */
     "moduleResolution": "bundler",
