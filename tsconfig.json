@@ -6,7 +6,11 @@
     "module": "ESNext",
     "paths": {
       "#/*": ["./src/*"],
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      // App-level config lives outside src/ (app/config/env.ts) to match the
+      // sprint manifest. vite.config.ts has `resolve.tsconfigPaths`, so this
+      // alias resolves at build time too.
+      "#app/*": ["./app/*"]
     },
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     // "node" types are needed for `process.env` in server-only modules
