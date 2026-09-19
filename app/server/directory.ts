@@ -1,9 +1,9 @@
 // Server-only directory reads.
 //
-// ⚠️ SERVER ONLY. ⚠️ This module imports `app/lib/supabase.server.ts`, which
+// âš ï¸ SERVER ONLY. âš ï¸ This module imports `app/lib/supabase.server.ts`, which
 // reads the service-role key. It must never be imported from a route component
 // or anything under `src/components/`. The route calls the exported server
-// function instead — TanStack Start turns that call into a network request, so
+// function instead â€” TanStack Start turns that call into a network request, so
 // only the RESULT crosses to the browser, never this code or its credentials.
 //
 // Implements the contract in `docs/server-function-contract.md`. Field names,
@@ -11,7 +11,7 @@
 // need to change them here.
 //
 // The pure half (validation, escaping, row mapping) lives in
-// `./directoryMappers.ts` so it can be unit-tested without Supabase.
+// `../lib/directory/mappers.ts` so it can be unit-tested without Supabase.
 
 import { createServerFn } from '@tanstack/react-start'
 
@@ -25,7 +25,7 @@ import {
   type DirectoryPersonRow,
   type GetDirectoryEntriesResult,
   type RawDirectoryQuery,
-} from './directoryMappers'
+} from '../lib/directory/mappers'
 
 /** Table and columns from the contract's "Data source" section. */
 const TABLE = 'directory_people'
@@ -35,7 +35,7 @@ const COLUMNS = 'id, full_name, role, team, position, jersey_no'
  * Load directory rows (players and staff) for the UI.
  *
  * Inputs are all optional: `{ search?, role?, limit? }`. Returns the
- * discriminated result from the contract — `{ ok: true, entries, meta }` or
+ * discriminated result from the contract â€” `{ ok: true, entries, meta }` or
  * `{ ok: false, error }`. It does not throw for expected failures, so the UI
  * always has something safe to render.
  */
@@ -77,7 +77,7 @@ export const getDirectoryEntries = createServerFn({ method: 'GET' })
 
       if (error) {
         // Log the real error where only we can see it; return a flat code.
-        // Never return or stringify `error` itself — it can carry request
+        // Never return or stringify `error` itself â€” it can carry request
         // configuration.
         console.error('[directory] Supabase read failed', error)
         return {
@@ -101,7 +101,7 @@ export const getDirectoryEntries = createServerFn({ method: 'GET' })
         console.warn(`[directory] skipped ${skipped} row(s) with an unrecognized role`)
       }
 
-      // No rows is success, not an error — the UI renders an empty state.
+      // No rows is success, not an error â€” the UI renders an empty state.
       return {
         ok: true,
         entries,

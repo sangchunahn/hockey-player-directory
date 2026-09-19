@@ -27,11 +27,9 @@ export default defineConfig({
 
     include: ['app/**/*.test.ts', 'src/**/*.test.ts'],
 
-    // TODO: remove once the mapper tests land in the next step. It exists only
-    // so `npm test` reports success while there are genuinely zero tests; left
-    // in place afterwards it would let CI pass when tests silently stop being
-    // discovered.
-    passWithNoTests: true,
+    // `passWithNoTests` is deliberately NOT set: now that real tests exist, a
+    // run that discovers none means the include pattern broke, and that should
+    // fail rather than report success.
   },
 
   resolve: {

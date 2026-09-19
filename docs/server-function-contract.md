@@ -178,7 +178,7 @@ one of the three flat codes above.
 This split is what makes the Vitest suite possible. Pure functions take plain objects
 and return plain objects — no Supabase import, no env read, no network, no clock.
 
-### Pure — suggested module `app/server/directoryMappers.ts`
+### Pure — module `app/lib/directory/mappers.ts`
 
 | Function | Signature (plain language) | Why it is testable |
 | --- | --- | --- |
@@ -194,7 +194,7 @@ and return plain objects — no Supabase import, no env read, no network, no clo
 - Assembling the final result from mapped rows.
 
 **The seam:** `directory.ts` does I/O and calls the pure helpers. Tests import
-`directoryMappers.ts` directly and never touch Supabase or env. If a test needs a
+`app/lib/directory/mappers.ts` directly and never touch Supabase or env. If a test needs a
 Supabase mock to run, the split is in the wrong place.
 
 ---

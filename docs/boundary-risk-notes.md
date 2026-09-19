@@ -59,7 +59,7 @@ Each item is a yes/no check against a file, a test run, or an inspection.
 - [ ] **No secret is client-prefixed.** `grep -r "VITE_.*SERVICE_ROLE" src .env.example` returns nothing.
 - [ ] **Server-only Supabase module exists** (e.g. `src/server/supabase.server.ts`) and is imported by server functions only — grep its import sites and confirm none live in `src/routes/**` component code or `src/components/**`.
 - [ ] **A TanStack Start server function loads directory data**, and the route files call that function instead of importing a credential-touching module.
-- [ ] **Pure mappers are extracted** into their own module (e.g. `src/lib/directoryMappers.ts`) with no imports of Supabase, env, or `fetch` — row in, UI shape out.
+- [ ] **Pure mappers are extracted** into their own module (`app/lib/directory/mappers.ts`) with no imports of Supabase, env, or `fetch` — row in, UI shape out.
 - [ ] **Vitest is configured and runs**: `npm test` executes. At least one mapper test exists that genuinely discriminates — it fails when the mapper is wrong (verify by temporarily breaking the mapper) and passes when it is right.
 - [ ] **Nothing secret in the built bundle.** After `npm run build`, grep `.output/` and `dist/` for `SERVICE_ROLE` and for the literal secret value — zero hits.
 - [ ] **Nothing secret on the wire.** Load `/players` with the Network tab open; no request or response payload contains a key.
