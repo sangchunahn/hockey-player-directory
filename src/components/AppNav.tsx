@@ -47,6 +47,9 @@ export function AppNav() {
       >
         Games
       </Link>
+      <Link to="/directory" className={base} activeProps={activeProps}>
+        Directory
+      </Link>
     </nav>
   )
 }
