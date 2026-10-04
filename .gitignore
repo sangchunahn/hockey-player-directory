@@ -20,3 +20,7 @@ todos.json
 .vercel
 *.log
 npm-debug.log*
+
+# Supabase CLI local state (never commit)
+supabase/.temp/
+supabase/.branches/
