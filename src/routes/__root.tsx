@@ -16,6 +16,8 @@ import {
 } from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { useState } from 'react'
 
 import { AppNav } from '../components/AppNav'
 import appCss from '../styles.css?url'
@@ -46,8 +48,16 @@ export const Route = createRootRoute({
 })
 
 // Shared chrome for the whole directory. Child routes render through <Outlet />.
+//
+// QueryClientProvider holds the TanStack Query cache used by
+// src/lib/scouting/hooks.ts and mutation-hooks.ts. It is created once per mount
+// with useState, so each server render gets its own cache (no data shared
+// between visitors) and the browser keeps one cache for the session.
 function RootLayout() {
+  const [queryClient] = useState(() => new QueryClient())
+
   return (
+    <QueryClientProvider client={queryClient}>
     <div className="min-h-screen flex flex-col">
       <header className="border-b border-slate-200 px-6 py-4">
         <p className="text-lg font-semibold">Hockey Ops Directory</p>
@@ -60,6 +70,7 @@ function RootLayout() {
         <Outlet />
       </main>
     </div>
+    </QueryClientProvider>
   )
 }
 

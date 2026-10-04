@@ -14,6 +14,9 @@ import { Route as DirectoryRouteImport } from './routes/directory'
 import { Route as GamesIndexRouteImport } from './routes/games/index'
 import { Route as PlayersIndexRouteImport } from './routes/players/index'
 import { Route as PlayersPlayerIdRouteImport } from './routes/players/$playerId'
+import { Route as ScoutingAggregatesRouteImport } from './routes/scouting/aggregates'
+import { Route as ScoutingEventsRouteImport } from './routes/scouting/events'
+import { Route as ScoutingPlayersRouteImport } from './routes/scouting/players'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -40,11 +43,29 @@ const PlayersPlayerIdRoute = PlayersPlayerIdRouteImport.update({
   path: '/players/$playerId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ScoutingAggregatesRoute = ScoutingAggregatesRouteImport.update({
+  id: '/scouting/aggregates',
+  path: '/scouting/aggregates',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ScoutingEventsRoute = ScoutingEventsRouteImport.update({
+  id: '/scouting/events',
+  path: '/scouting/events',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ScoutingPlayersRoute = ScoutingPlayersRouteImport.update({
+  id: '/scouting/players',
+  path: '/scouting/players',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/directory': typeof DirectoryRoute
   '/players/$playerId': typeof PlayersPlayerIdRoute
+  '/scouting/aggregates': typeof ScoutingAggregatesRoute
+  '/scouting/events': typeof ScoutingEventsRoute
+  '/scouting/players': typeof ScoutingPlayersRoute
   '/games/': typeof GamesIndexRoute
   '/players/': typeof PlayersIndexRoute
 }
@@ -52,6 +73,9 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/directory': typeof DirectoryRoute
   '/players/$playerId': typeof PlayersPlayerIdRoute
+  '/scouting/aggregates': typeof ScoutingAggregatesRoute
+  '/scouting/events': typeof ScoutingEventsRoute
+  '/scouting/players': typeof ScoutingPlayersRoute
   '/games': typeof GamesIndexRoute
   '/players': typeof PlayersIndexRoute
 }
@@ -60,19 +84,41 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/directory': typeof DirectoryRoute
   '/players/$playerId': typeof PlayersPlayerIdRoute
+  '/scouting/aggregates': typeof ScoutingAggregatesRoute
+  '/scouting/events': typeof ScoutingEventsRoute
+  '/scouting/players': typeof ScoutingPlayersRoute
   '/games/': typeof GamesIndexRoute
   '/players/': typeof PlayersIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/directory' | '/players/$playerId' | '/games/' | '/players/'
+  fullPaths:
+    | '/'
+    | '/directory'
+    | '/players/$playerId'
+    | '/scouting/aggregates'
+    | '/scouting/events'
+    | '/scouting/players'
+    | '/games/'
+    | '/players/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/directory' | '/players/$playerId' | '/games' | '/players'
+  to:
+    | '/'
+    | '/directory'
+    | '/players/$playerId'
+    | '/scouting/aggregates'
+    | '/scouting/events'
+    | '/scouting/players'
+    | '/games'
+    | '/players'
   id:
     | '__root__'
     | '/'
     | '/directory'
     | '/players/$playerId'
+    | '/scouting/aggregates'
+    | '/scouting/events'
+    | '/scouting/players'
     | '/games/'
     | '/players/'
   fileRoutesById: FileRoutesById
@@ -81,6 +127,9 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DirectoryRoute: typeof DirectoryRoute
   PlayersPlayerIdRoute: typeof PlayersPlayerIdRoute
+  ScoutingAggregatesRoute: typeof ScoutingAggregatesRoute
+  ScoutingEventsRoute: typeof ScoutingEventsRoute
+  ScoutingPlayersRoute: typeof ScoutingPlayersRoute
   GamesIndexRoute: typeof GamesIndexRoute
   PlayersIndexRoute: typeof PlayersIndexRoute
 }
@@ -122,6 +171,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlayersPlayerIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/scouting/aggregates': {
+      id: '/scouting/aggregates'
+      path: '/scouting/aggregates'
+      fullPath: '/scouting/aggregates'
+      preLoaderRoute: typeof ScoutingAggregatesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/scouting/events': {
+      id: '/scouting/events'
+      path: '/scouting/events'
+      fullPath: '/scouting/events'
+      preLoaderRoute: typeof ScoutingEventsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/scouting/players': {
+      id: '/scouting/players'
+      path: '/scouting/players'
+      fullPath: '/scouting/players'
+      preLoaderRoute: typeof ScoutingPlayersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -129,6 +199,9 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DirectoryRoute: DirectoryRoute,
   PlayersPlayerIdRoute: PlayersPlayerIdRoute,
+  ScoutingAggregatesRoute: ScoutingAggregatesRoute,
+  ScoutingEventsRoute: ScoutingEventsRoute,
+  ScoutingPlayersRoute: ScoutingPlayersRoute,
   GamesIndexRoute: GamesIndexRoute,
   PlayersIndexRoute: PlayersIndexRoute,
 }

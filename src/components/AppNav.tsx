@@ -50,6 +50,16 @@ export function AppNav() {
       <Link to="/directory" className={base} activeProps={activeProps}>
         Directory
       </Link>
+      {/* Sprint 3 scouting smoke-test slice. */}
+      <Link to="/scouting/players" className={base} activeProps={activeProps}>
+        Scout players
+      </Link>
+      <Link to="/scouting/events" className={base} activeProps={activeProps}>
+        Scout events
+      </Link>
+      <Link to="/scouting/aggregates" className={base} activeProps={activeProps}>
+        Scout summary
+      </Link>
     </nav>
   )
 }
