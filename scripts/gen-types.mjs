@@ -7,8 +7,9 @@
 // SUPABASE_PROJECT_REF to point at a different project.
 //
 // Guard: refuses to overwrite the file if the generated schema is missing any
-// table in EXPECTED_TABLES. Generating before the migration is applied returns
-// an empty `Database` type, which would otherwise be committed silently.
+// table in EXPECTED_TABLES or RPC in EXPECTED_FUNCTIONS. Generating before a
+// migration is applied silently drops what it adds (before 001: an empty
+// `Database`), which would otherwise be committed.
 import { execFileSync } from 'node:child_process'
 import { writeFileSync } from 'node:fs'
 
@@ -16,6 +17,9 @@ const PROJECT_REF = process.env.SUPABASE_PROJECT_REF ?? 'bsjodruzecdaymnxjade'
 const SUPABASE_CLI = 'supabase@2.119.0'
 const OUT = 'src/types/database.ts'
 const EXPECTED_TABLES = ['players', 'games', 'scouting_events']
+// RPCs from supabase/migrations/ (002_scouting_aggregates_rpc.sql). Same 6-space
+// indent as tables in the generated file, so one check covers both.
+const EXPECTED_FUNCTIONS = ['player_event_summary']
 
 const generated = execFileSync(
   'npx',
@@ -24,7 +28,7 @@ const generated = execFileSync(
 )
 
 const lines = generated.split(/\r?\n/)
-const missing = EXPECTED_TABLES.filter((t) => !lines.includes(`      ${t}: {`))
+const missing = [...EXPECTED_TABLES, ...EXPECTED_FUNCTIONS].filter((t) => !lines.includes(`      ${t}: {`))
 if (missing.length > 0) {
   console.error(
     `gen:types aborted — generated schema is missing: ${missing.join(', ')}.\n` +
@@ -39,4 +43,4 @@ const header =
   '// See docs/typegen-notes.md.\n\n'
 
 writeFileSync(OUT, header + generated)
-console.log(`Wrote ${OUT} (tables: ${EXPECTED_TABLES.join(', ')})`)
+console.log(`Wrote ${OUT} (tables: ${EXPECTED_TABLES.join(', ')}; functions: ${EXPECTED_FUNCTIONS.join(', ')})`)

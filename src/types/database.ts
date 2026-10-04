@@ -125,7 +125,28 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      player_event_summary: {
+        Args: {
+          p_game_id?: string
+          p_played_from?: string
+          p_played_to?: string
+          p_position?: Database["public"]["Enums"]["player_position"]
+        }
+        Returns: {
+          assist_count: number
+          display_name: string
+          event_count: number
+          games_count: number
+          goal_count: number
+          hit_count: number
+          note_count: number
+          penalty_count: number
+          player_id: string
+          position: Database["public"]["Enums"]["player_position"]
+          shot_count: number
+          team_label: string
+        }[]
+      }
     }
     Enums: {
       player_position: "F" | "D" | "G"
