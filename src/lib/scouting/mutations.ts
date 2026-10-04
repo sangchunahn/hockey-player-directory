@@ -168,7 +168,7 @@ export async function updateScoutingEvent(
 ): Promise<MutationResult<ScoutingEventRow>> {
   const problem =
     checkId('Event', eventId) ??
-    (Object.values(patch).every((v) => v === undefined) ? 'Nothing to update — change the type, period, or note.' : null) ??
+    ([patch.event_type, patch.period, patch.note].every((v) => v === undefined) ? 'Nothing to update — change the type, period, or note.' : null) ??
     (patch.event_type !== undefined && !EVENT_TYPES.includes(patch.event_type)
       ? `Event type must be one of: ${EVENT_TYPES.join(', ')}.`
       : null) ??
@@ -178,10 +178,13 @@ export async function updateScoutingEvent(
   // (scouting_events_note_required_check) and reported via toMutationError.
   if (problem) return fail(problem)
 
-  const changes: Tables['scouting_events']['Update'] = {
-    ...patch,
-    ...(patch.note != null ? { note: patch.note.trim() } : {}),
-  }
+  // Copy allowed fields one by one — never spread `patch`. TypeScript only
+  // rejects extra keys on object literals, so a caller's variable could still
+  // carry player_id or game_id; spreading would send them.
+  const changes: Tables['scouting_events']['Update'] = {}
+  if (patch.event_type !== undefined) changes.event_type = patch.event_type
+  if (patch.period !== undefined) changes.period = patch.period
+  if (patch.note !== undefined) changes.note = patch.note?.trim() ?? null
 
   return runWrite('update the event', () =>
     getSupabase().from('scouting_events').update(changes).eq('id', eventId).select().single(),
@@ -202,7 +205,7 @@ export async function updatePlayer(
 ): Promise<MutationResult<PlayerRow>> {
   const problem =
     checkId('Player', playerId) ??
-    (Object.values(patch).every((v) => v === undefined)
+    ([patch.display_name, patch.position, patch.team_label, patch.sweater_number].every((v) => v === undefined)
       ? 'Nothing to update — change the name, position, team, or number.'
       : null) ??
     (patch.display_name !== undefined && isBlank(patch.display_name) ? 'Player name cannot be blank.' : null) ??
@@ -216,11 +219,12 @@ export async function updatePlayer(
       : null)
   if (problem) return fail(problem)
 
-  const changes: Tables['players']['Update'] = {
-    ...patch,
-    ...(patch.display_name !== undefined ? { display_name: patch.display_name.trim() } : {}),
-    ...(patch.team_label !== undefined ? { team_label: patch.team_label.trim() } : {}),
-  }
+  // Allowed fields only, copied explicitly (see updateScoutingEvent).
+  const changes: Tables['players']['Update'] = {}
+  if (patch.display_name !== undefined) changes.display_name = patch.display_name.trim()
+  if (patch.position !== undefined) changes.position = patch.position
+  if (patch.team_label !== undefined) changes.team_label = patch.team_label.trim()
+  if (patch.sweater_number !== undefined) changes.sweater_number = patch.sweater_number
 
   return runWrite('update the player', () =>
     getSupabase().from('players').update(changes).eq('id', playerId).select().single(),
