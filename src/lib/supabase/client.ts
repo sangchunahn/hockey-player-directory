@@ -1,46 +1,50 @@
-// Typed Supabase client for scouting reads — the ONLY client src/lib/scouting/
-// uses.
+// BROWSER Supabase client: public settings only.
+// (Server functions use ./server.ts instead. See docs/security/auth-session-plan.md.)
 //
-// Typed with the generated `Database` (src/types/database.ts), so every
-// `.from()` table name, `.select()` column, and `.eq()` filter is checked by
-// `tsc`. Rename a column, regenerate types, and the broken query fails the
-// typecheck instead of failing a scout at runtime.
+// Used for (auth-session plan, "Browser vs server Supabase client"):
+//   - starting sign-in and sign-out on the page (next step);
+//   - keeping the session cookies fresh in the browser;
+//   - the Sprint 3 scouting hooks, until they move behind server functions.
+// Never used for deciding what someone may see: the browser is controlled by
+// its user, so server functions re-check the session with ./server.ts and RLS
+// filters rows in Postgres.
 //
-// Uses the PUBLIC anon key only (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY,
-// read through publicEnv in app/config/env.ts). It is safe on both the server
-// and in the browser because it carries no secret: Row Level Security decides
-// what the anon key may read. The service-role client stays in
-// app/lib/supabase.server.ts and must never be imported here.
+// Reads ONLY the two public, VITE_-prefixed values (via publicEnv in
+// app/config/env.ts): VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY. The anon key
+// is public by design. It must never read SUPABASE_SERVICE_ROLE_KEY or any other
+// secret; that key bypasses RLS and lives only in app/lib/supabase.server.ts.
 //
-// Created LAZILY, like publicEnv: importing this module never throws, so the
-// app still boots before .env.local is filled in. The first query fails with a
-// message that names the missing variable.
+// `createBrowserClient` (@supabase/ssr) stores the session in cookies, not
+// localStorage. That way the browser sends the session to the server on every
+// request, which the server client reads to verify who is asking.
+//
+// Typed with the generated `Database`, so table, column and filter names are
+// checked by `tsc`.
 
-import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { createBrowserClient } from '@supabase/ssr'
 
 import { publicEnv } from '#app/config/env'
 import type { Database } from '#/types/database'
 
-export type TypedSupabaseClient = SupabaseClient<Database>
+/** Creates the browser Supabase client. Throws a setup message if either public env var is missing. */
+export function createSupabaseBrowserClient() {
+  // publicEnv throws "Missing required public env var VITE_SUPABASE_…" with
+  // setup steps, so a missing value is caught here instead of three layers down.
+  return createBrowserClient<Database>(publicEnv.SUPABASE_URL, publicEnv.SUPABASE_ANON_KEY)
+}
+
+export type TypedSupabaseClient = ReturnType<typeof createSupabaseBrowserClient>
 
 let cachedClient: TypedSupabaseClient | null = null
 
 /**
- * Returns the shared anon-key client, typed with `Database`.
+ * The shared browser client, created on first use. Importing this module never
+ * throws, so the app still boots before .env.local is filled in.
  *
- * Throws "Missing required public env var VITE_SUPABASE_URL" (or
- * VITE_SUPABASE_ANON_KEY) with setup instructions if either is unset.
+ * Kept for the Sprint 3 modules in src/lib/scouting/, which call it from the
+ * browser.
  */
 export function getSupabase(): TypedSupabaseClient {
-  if (cachedClient) return cachedClient
-
-  cachedClient = createClient<Database>(
-    publicEnv.SUPABASE_URL,
-    publicEnv.SUPABASE_ANON_KEY,
-    // No login exists yet (out of scope until Sprint 4), so there is no
-    // session to persist or refresh.
-    { auth: { persistSession: false, autoRefreshToken: false } },
-  )
-
+  cachedClient ??= createSupabaseBrowserClient()
   return cachedClient
 }
