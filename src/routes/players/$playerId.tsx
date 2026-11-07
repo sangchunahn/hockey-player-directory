@@ -60,8 +60,6 @@ function PlayerDetailPage() {
         <dd>#{player.number}</dd>
         <dt className="text-slate-500">Team</dt>
         <dd>{player.team}</dd>
-        <dt className="text-slate-500">Roster status</dt>
-        <dd>{player.status === 'ir' ? 'Injured reserve' : 'Active'}</dd>
       </dl>
 
       <p className="mt-4 text-sm">

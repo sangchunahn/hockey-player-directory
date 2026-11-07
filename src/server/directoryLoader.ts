@@ -11,16 +11,30 @@ import {
   seedGames,
   seedPlayers,
   type PlayerPosition,
-  type RosterStatus,
   type SeedGame,
   type SeedPlayer,
 } from '../data/hockeySeed'
 
+/**
+ * A player as the SHARED screens (/, /players, /players/$playerId) may see it.
+ *
+ * `status` is deliberately absent: `ir` (injured reserve) is a medical flag, and
+ * docs/access/access-matrix-v2.md seals medical flags in shared views from every
+ * role except medical. These loaders serve every visitor alike, so the flag must
+ * never leave the server here. Hiding it on the page would not be enough. There
+ * is also no status filter, because an "injured only" filter is itself a list of
+ * injured players.
+ */
+export type SharedPlayer = Omit<SeedPlayer, 'status'>
+
 export type PlayersFilter = {
   /** 'all' (or omitted) means no position filter. */
   position?: PlayerPosition | 'all'
-  /** 'all' (or omitted) means no status filter. */
-  status?: RosterStatus | 'all'
+}
+
+/** Copies only the shared fields, so the medical flag is never included. */
+function toSharedPlayer(player: SeedPlayer): SharedPlayer {
+  return { id: player.id, name: player.name, position: player.position, number: player.number, team: player.team }
 }
 
 export type GamesFilter = {
@@ -30,22 +44,17 @@ export type GamesFilter = {
   date?: string
 }
 
-/** All players, optionally filtered by already-validated search values. */
-export function listPlayers(filter: PlayersFilter = {}): SeedPlayer[] {
-  return seedPlayers.filter((p) => {
-    if (filter.position && filter.position !== 'all' && p.position !== filter.position) {
-      return false
-    }
-    if (filter.status && filter.status !== 'all' && p.status !== filter.status) {
-      return false
-    }
-    return true
-  })
+/** All players (shared fields only), optionally filtered by position. */
+export function listPlayers(filter: PlayersFilter = {}): SharedPlayer[] {
+  return seedPlayers
+    .filter((p) => !filter.position || filter.position === 'all' || p.position === filter.position)
+    .map(toSharedPlayer)
 }
 
-/** One player by id, or `null` when no seed player has that id. */
-export function getPlayerById(playerId: string): SeedPlayer | null {
-  return seedPlayers.find((p) => p.id === playerId) ?? null
+/** One player by id (shared fields only), or `null` when no seed player has that id. */
+export function getPlayerById(playerId: string): SharedPlayer | null {
+  const player = seedPlayers.find((p) => p.id === playerId)
+  return player ? toSharedPlayer(player) : null
 }
 
 /** All games, optionally filtered by already-validated search values. */

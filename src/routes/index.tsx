@@ -8,7 +8,7 @@ export const Route = createFileRoute('/')({
   // player names are in the initial HTML, not fetched later on the client.
   loader: () => ({
     summary: directorySummary(),
-    featured: listPlayers({ status: 'active' }).slice(0, 3),
+    featured: listPlayers().slice(0, 3),
   }),
   component: HomePage,
 })

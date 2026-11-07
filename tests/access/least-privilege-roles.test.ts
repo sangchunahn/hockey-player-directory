@@ -292,12 +292,13 @@ describe.skipIf(!dbReady)(`least-privilege staff roles (database)${skipReason}`,
 // is exactly what the assistant scout and the video analyst would see. These run
 // without the database.
 describe('medical flags on the shared player screens (app loader)', () => {
-  const injuryShown = () => [
-    ...listPlayers({ status: 'all' }).filter((p) => p.status === 'ir'),
-    ...listPlayers({ status: 'all' })
-      .map((p) => getPlayerById(p.id))
-      .filter((p) => p?.status === 'ir'),
-  ]
+  /** Every player record the shared screens receive that still carries a flag-like field or an 'ir' value. */
+  const injuryShown = () =>
+    [...listPlayers(), ...listPlayers().map((p) => getPlayerById(p.id))].filter(
+      (p): p is NonNullable<typeof p> =>
+        p !== null &&
+        (FLAG_FIELDS.some((field) => field in p) || Object.values(p).some((value) => value === 'ir')),
+    )
 
   it('AS-FLAG-SHARED: assistant scout gets no medical flag on the shared player list (/players, /players/$playerId)', () => {
     expect(injuryShown(), 'players exposed with an injured-reserve flag').toHaveLength(0)

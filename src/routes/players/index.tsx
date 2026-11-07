@@ -14,9 +14,10 @@ export const Route = createFileRoute('/players/')({
   search: { middlewares: [stripSearchParams(defaultPlayersSearch())] },
   // Pass the validated search into the loader so filtering happens on the
   // server and the filtered rows are in the first HTML.
+  // Roster status is not a filter here: injured reserve is a medical flag, sealed
+  // on shared screens (docs/access/access-matrix-v2.md).
   loaderDeps: ({ search }) => ({
     position: search.position,
-    status: search.status,
   }),
   loader: ({ deps }) => ({ players: listPlayers(deps) }),
   component: PlayersIndexPage,
@@ -44,8 +45,7 @@ function PlayersIndexPage() {
       </p>
 
       <p className="mt-3 text-sm text-slate-500">
-        Active filters: position = <span className="font-mono">{position}</span>,
-        status = <span className="font-mono">{status}</span> — {players.length}{' '}
+        Active filter: position = <span className="font-mono">{position}</span> — {players.length}{' '}
         {players.length === 1 ? 'player' : 'players'}
       </p>
 
@@ -66,13 +66,6 @@ function PlayersIndexPage() {
           Goaltenders
         </Link>
         <span className="text-slate-300">|</span>
-        <Link to="/players" search={{ position, status: 'active' }} className="text-sky-700 underline">
-          Active only
-        </Link>
-        <Link to="/players" search={{ position, status: 'all' }} className="text-sky-700 underline">
-          Any status
-        </Link>
-        <span className="text-slate-300">|</span>
         <Link to="/players" search={{ position: 'all', status: 'active' }} className="text-sky-700 underline">
           Reset
         </Link>
@@ -90,7 +83,6 @@ function PlayersIndexPage() {
             </Link>
             <span className="ml-2 text-sm text-slate-500">
               {POSITION_LABEL[player.position]}
-              {player.status === 'ir' ? ' · IR' : ''}
             </span>
           </li>
         ))}
