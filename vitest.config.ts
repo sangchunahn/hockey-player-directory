@@ -25,7 +25,7 @@ export default defineConfig({
     // component test is ever added, rather than slowing every test down.
     environment: 'node',
 
-    include: ['app/**/*.test.ts', 'src/**/*.test.ts'],
+    include: ['app/**/*.test.ts', 'src/**/*.test.ts', 'tests/**/*.test.ts'],
 
     // `passWithNoTests` is deliberately NOT set: now that real tests exist, a
     // run that discovers none means the include pattern broke, and that should
