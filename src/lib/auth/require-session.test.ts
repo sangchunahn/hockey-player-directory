@@ -109,6 +109,15 @@ describe('requireSession', () => {
     expect(await rejection()).toMatchObject({ status: 503 })
   })
 
+  it('fails closed with 503 when the server client cannot be created (missing Supabase env vars)', async () => {
+    createSupabaseServerClient.mockImplementationOnce(() => {
+      throw new Error('Missing required public env var VITE_SUPABASE_URL.')
+    })
+
+    expect(await rejection()).toMatchObject({ status: 503 })
+    expect(getUser).not.toHaveBeenCalled()
+  })
+
   it('takes no caller input, so a browser-supplied user id or role cannot vouch for anyone', () => {
     expect(requireSession.length).toBe(0)
   })

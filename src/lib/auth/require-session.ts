@@ -56,10 +56,12 @@ export class UnauthorizedError extends Error {
  * Resolves with the verified user, or throws UnauthorizedError.
  */
 export async function requireSession(): Promise<VerifiedSession> {
-  const supabase = createSupabaseServerClient()
-
-  let result: Awaited<ReturnType<typeof supabase.auth.getUser>>
+  let supabase: ServerSupabaseClient
+  let result: Awaited<ReturnType<ServerSupabaseClient['auth']['getUser']>>
   try {
+    // Building the client throws if the Supabase env vars are missing (for
+    // example, not set in a deploy). That still fails closed: 503, no query.
+    supabase = createSupabaseServerClient()
     result = await supabase.auth.getUser()
   } catch {
     throw new UnauthorizedError(503)
