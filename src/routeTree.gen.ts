@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DirectoryRouteImport } from './routes/directory'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as ApiEvaluationsRouteImport } from './routes/api/evaluations'
 import { Route as ApiEventsRouteImport } from './routes/api/events'
 import { Route as GamesIndexRouteImport } from './routes/games/index'
 import { Route as PlayersIndexRouteImport } from './routes/players/index'
@@ -34,6 +35,11 @@ const DirectoryRoute = DirectoryRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiEvaluationsRoute = ApiEvaluationsRouteImport.update({
+  id: '/api/evaluations',
+  path: '/api/evaluations',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiEventsRoute = ApiEventsRouteImport.update({
@@ -81,6 +87,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/directory': typeof DirectoryRoute
   '/login': typeof LoginRoute
+  '/api/evaluations': typeof ApiEvaluationsRoute
   '/api/events': typeof ApiEventsRoute
   '/players/$playerId': typeof PlayersPlayerIdRoute
   '/scouting/aggregates': typeof ScoutingAggregatesRoute
@@ -94,6 +101,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/directory': typeof DirectoryRoute
   '/login': typeof LoginRoute
+  '/api/evaluations': typeof ApiEvaluationsRoute
   '/api/events': typeof ApiEventsRoute
   '/players/$playerId': typeof PlayersPlayerIdRoute
   '/scouting/aggregates': typeof ScoutingAggregatesRoute
@@ -108,6 +116,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/directory': typeof DirectoryRoute
   '/login': typeof LoginRoute
+  '/api/evaluations': typeof ApiEvaluationsRoute
   '/api/events': typeof ApiEventsRoute
   '/players/$playerId': typeof PlayersPlayerIdRoute
   '/scouting/aggregates': typeof ScoutingAggregatesRoute
@@ -123,6 +132,7 @@ export interface FileRouteTypes {
     | '/'
     | '/directory'
     | '/login'
+    | '/api/evaluations'
     | '/api/events'
     | '/players/$playerId'
     | '/scouting/aggregates'
@@ -136,6 +146,7 @@ export interface FileRouteTypes {
     | '/'
     | '/directory'
     | '/login'
+    | '/api/evaluations'
     | '/api/events'
     | '/players/$playerId'
     | '/scouting/aggregates'
@@ -149,6 +160,7 @@ export interface FileRouteTypes {
     | '/'
     | '/directory'
     | '/login'
+    | '/api/evaluations'
     | '/api/events'
     | '/players/$playerId'
     | '/scouting/aggregates'
@@ -163,6 +175,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DirectoryRoute: typeof DirectoryRoute
   LoginRoute: typeof LoginRoute
+  ApiEvaluationsRoute: typeof ApiEvaluationsRoute
   ApiEventsRoute: typeof ApiEventsRoute
   PlayersPlayerIdRoute: typeof PlayersPlayerIdRoute
   ScoutingAggregatesRoute: typeof ScoutingAggregatesRoute
@@ -194,6 +207,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/evaluations': {
+      id: '/api/evaluations'
+      path: '/api/evaluations'
+      fullPath: '/api/evaluations'
+      preLoaderRoute: typeof ApiEvaluationsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/events': {
@@ -259,6 +279,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DirectoryRoute: DirectoryRoute,
   LoginRoute: LoginRoute,
+  ApiEvaluationsRoute: ApiEvaluationsRoute,
   ApiEventsRoute: ApiEventsRoute,
   PlayersPlayerIdRoute: PlayersPlayerIdRoute,
   ScoutingAggregatesRoute: ScoutingAggregatesRoute,
