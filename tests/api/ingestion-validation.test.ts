@@ -1,5 +1,5 @@
 // Contract tests for POST /api/events and POST /api/evaluations.
-// Cases (given / when / then): docs/api/ingestion-test-cases.md
+// Cases (given / when / then): docs/api/acceptance-criteria.md
 // Contract: openapi/hockey-ingestion.yaml
 // Drives the real route handlers with real Request objects. No database, no auth.
 import { describe, expect, it } from 'vitest'
