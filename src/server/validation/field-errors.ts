@@ -1,8 +1,9 @@
-// Shared error shape. Mirrors components/schemas/ErrorDetail and ErrorResponse
-// in openapi/hockey-ingestion.yaml. Both payloads must fail through this file.
+// Field-level error objects. Mirrors components/schemas/ErrorDetail in
+// openapi/hockey-ingestion.yaml. No HTTP status or response wrapper lives here;
+// the route layer (a later step) turns these into a 422 response.
 
 // REQUIRED, OUT_OF_RANGE, DUPLICATE come from the YAML enum.
-// INVALID covers a wrong JSON type (for example period as text); the YAML does not list it yet.
+// INVALID covers a wrong JSON type (for example period as text).
 export type ErrorCode = 'REQUIRED' | 'OUT_OF_RANGE' | 'DUPLICATE' | 'INVALID';
 
 export interface ErrorDetail {
@@ -11,27 +12,6 @@ export interface ErrorDetail {
   message: string;
 }
 
-export interface ErrorResponse {
-  error: {
-    code: 'VALIDATION_FAILED' | 'CONFLICT';
-    message: string;
-    details?: ErrorDetail[];
-  };
-}
-
 export function fieldError(field: string, code: ErrorCode, message: string): ErrorDetail {
   return { field, code, message };
-}
-
-export function validationFailed(details: ErrorDetail[]): { status: 422; body: ErrorResponse } {
-  return {
-    status: 422,
-    body: {
-      error: {
-        code: 'VALIDATION_FAILED',
-        message: `${details.length} field(s) need fixing.`,
-        details,
-      },
-    },
-  };
 }
