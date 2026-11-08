@@ -23,7 +23,10 @@ paths:
               $ref: '#/components/schemas/GameEventRequest'
       responses:
         '201':
-          description: A new game event was stored. The body is the stored event.
+          description: >
+            A new game event was stored. The body is the stored event. A replay (the same
+            provider_event_id sent again) returns this same success with the original stored
+            event and does not store a second event.
           content:
             application/json:
               schema:
@@ -42,13 +45,6 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
           description: A valid identity is not allowed to push game events. Reserved.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
-          description: >
-            Proposed: the provider_event_id was already stored. Refused as a duplicate.
           content:
             application/json:
               schema:
@@ -119,8 +115,10 @@ components:
         provider_event_id:
           type: string
           description: >
-            Proposed. The provider's own id for this event, used to refuse duplicate resends
-            (409). Not in the client story; needs stakeholder confirmation.
+            Proposed. The provider's own id for this event. It is the idempotency key: sending
+            the same id again is a replay of the same event, so the original success is returned
+            and no second event is stored. Not in the client story; needs stakeholder
+            confirmation.
         event_type:
           type: string
           enum: [goal, penalty]
@@ -147,6 +145,9 @@ components:
             id:
               type: string
               description: The team app's id for the stored event, returned on create.
+            replayed:
+              type: boolean
+              description: Optional hint. True when this reply is a replay of an event that was already stored.
 
     EvaluationRequest:
       type: object
