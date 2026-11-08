@@ -1,0 +1,143 @@
+openapi: 3.0.3
+info:
+  title: Hockey Event Ingestion API
+  version: 0.1.0
+  description: >
+    Lets the third-party hockey data provider push live game events into the team app.
+    Built only from docs/api/resource-design.md and docs/api/error-and-status-model.md.
+    Coach evaluation forms are a separate resource and are not part of this file.
+    Fields marked "proposed" are not in the client story and need stakeholder confirmation.
+
+paths:
+  /game-events:
+    post:
+      summary: Push one live game event
+      description: >
+        Called by the third-party hockey data provider. Each successful call creates one
+        stored game event. Refused events return a structured error with field-level details.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GameEventRequest'
+      responses:
+        '201':
+          description: A new game event was stored. The body is the stored event.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameEvent'
+        '400':
+          description: The request is not usable at all (empty body, not JSON, or wrong content type). No field details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: No valid identity was sent. Reserved; login is not built this sprint.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: A valid identity is not allowed to push game events. Reserved.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: >
+            Proposed: the provider_event_id was already stored. Refused as a duplicate.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: >
+            The JSON parsed, but one or more fields are missing, the wrong type, or break a
+            rule. Every bad field is listed in error.details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    GameEventRequest:
+      type: object
+      required:
+        - event_type
+        - period
+      properties:
+        provider_event_id:
+          type: string
+          description: >
+            Proposed. The provider's own id for this event, used to refuse duplicate resends
+            (409). Not in the client story; needs stakeholder confirmation.
+        event_type:
+          type: string
+          enum: [goal, penalty]
+          description: >
+            What happened. The story names goals and penalties as examples; the full list is
+            not in the brief.
+        period:
+          type: integer
+          minimum: 1
+          maximum: 5
+          description: >
+            Game period. The 1 to 5 range is proposed; it is not stated in the story.
+      description: >
+        Open question: which fields identify the game the event belongs to. The brief does not
+        say, so no game field is defined here.
+
+    GameEvent:
+      allOf:
+        - $ref: '#/components/schemas/GameEventRequest'
+        - type: object
+          required:
+            - id
+          properties:
+            id:
+              type: string
+              description: The team app's id for the stored event, returned on create.
+
+    ErrorDetail:
+      type: object
+      required:
+        - field
+        - code
+        - message
+      properties:
+        field:
+          type: string
+          description: The field path, such as period or ratings.skating.
+        code:
+          type: string
+          enum: [REQUIRED, OUT_OF_RANGE, DUPLICATE]
+        message:
+          type: string
+          description: What to fix, in plain words.
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+              description: A stable, machine-readable token, such as VALIDATION_FAILED or CONFLICT.
+            message:
+              type: string
+              description: A short summary of the whole failure.
+            details:
+              type: array
+              description: One entry per bad field. Empty or absent for 400, 401, 403.
+              items:
+                $ref: '#/components/schemas/ErrorDetail'
