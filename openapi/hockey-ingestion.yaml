@@ -62,6 +62,52 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /evaluations:
+    post:
+      summary: Submit one player evaluation form
+      description: >
+        Called by a coach after practice. Each successful call stores one completed evaluation
+        for one player. Refused forms return the same structured error envelope as game events.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EvaluationRequest'
+      responses:
+        '201':
+          description: A new evaluation was stored. The body is the stored evaluation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Evaluation'
+        '400':
+          description: The request is not usable at all (empty body, not JSON, or wrong content type). No field details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: No valid identity was sent. Reserved; login is not built this sprint.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: A valid identity is not allowed to submit evaluations. Reserved.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: >
+            The JSON parsed, but one or more fields are missing, the wrong type, or break a rule.
+            Every bad field is listed in error.details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
 components:
   schemas:
     GameEventRequest:
@@ -101,6 +147,42 @@ components:
             id:
               type: string
               description: The team app's id for the stored event, returned on create.
+
+    EvaluationRequest:
+      type: object
+      required:
+        - player_id
+        - ratings
+      properties:
+        player_id:
+          type: string
+          description: >
+            Proposed. Which player the evaluation is about. The brief does not define the player
+            identifier, so this needs stakeholder confirmation.
+        ratings:
+          type: object
+          description: >
+            Proposed. Named ratings from the coach. The story does not list the rating names or
+            scale; the error model example uses ratings.skating.
+          additionalProperties:
+            type: integer
+            minimum: 1
+            maximum: 5
+            description: Proposed 1 to 5 scale, not stated in the story.
+        notes:
+          type: string
+          description: Proposed optional free-text note from the coach.
+
+    Evaluation:
+      allOf:
+        - $ref: '#/components/schemas/EvaluationRequest'
+        - type: object
+          required:
+            - id
+          properties:
+            id:
+              type: string
+              description: The team app's id for the stored evaluation, returned on create.
 
     ErrorDetail:
       type: object
