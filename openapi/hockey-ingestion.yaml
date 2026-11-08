@@ -196,7 +196,7 @@ components:
           description: The field path, such as period or ratings.skating.
         code:
           type: string
-          enum: [REQUIRED, OUT_OF_RANGE, DUPLICATE]
+          enum: [REQUIRED, OUT_OF_RANGE, DUPLICATE, INVALID]
         message:
           type: string
           description: What to fix, in plain words.
