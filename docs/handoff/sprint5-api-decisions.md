@@ -15,7 +15,7 @@ The client story (`docs/scoping/client-story-brief.md`) asks for two things:
 |---|---|---|
 | Resource design | `docs/api/resource-design.md` | Two addresses, one per job: the provider sends events to `POST /api/events`, and a coach sends a form to `POST /api/evaluations`. Nothing else is offered yet. |
 | OpenAPI contract | `openapi/hockey-ingestion.yaml` | One written agreement for both addresses: what each request must contain, and what each reply looks like. |
-| Server-side field validation | `src/server/validation/` and `src/routes/api/` | The server checks every request itself. Good requests get `201 Created`. Requests that cannot be read get `400`. Requests with bad fields get `422`, with a list that names each bad field and what to fix. |
+| Server-side field validation | `src/server/validation/` and `src/routes/api/` | The server checks every request itself. Good requests get `201 Created`. Requests that cannot be read get `400`. Requests with bad fields get `422`, with a list that names each bad field and what to fix. Every error reply uses one shape: an `error` with a `code` (such as `VALIDATION_FAILED`), a `message`, and `details` (one entry per bad field, with its `field`, `code`, and `message`). |
 | Acceptance criteria | `docs/api/acceptance-criteria.md` | The plain list of what the app must do in each case, such as a missing period or a rating above 5. |
 | Contract tests | `tests/api/ingestion-validation.test.ts` | 23 automatic checks that confirm the cases above. All pass. |
 
