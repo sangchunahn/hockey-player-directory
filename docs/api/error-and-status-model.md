@@ -31,10 +31,14 @@ was stored.
 | **401 Unauthorized** | No valid identity was sent. Reserved for later login work; this sprint does not implement login. | A push with no provider credential. | A form submitted with no staff sign-in. |
 | **403 Forbidden** | A valid identity is not allowed to call this operation. Reserved. | A coach's identity posting to `/game-events`. | A provider's identity posting to `/evaluations`. |
 | **404 Not Found** | The address names a record the API has never stored. None of the in-scope operations fetch by id, so this does not apply to them today. | Not applicable today. | Not applicable today. |
-| **409 Conflict** | The request is valid, but accepting it would create a duplicate. | **Open decision.** The story does not say events carry an id from the provider. See below. | Not applicable today. |
+| **409 Conflict** | The request is valid, but accepting it would create a duplicate of a stored record. | **Proposed, needs confirmation:** the provider sends its own event id. A resend of an id the team already stored is refused with 409 `CONFLICT`. The story does not state this; see Open decisions. | Not applicable today. |
 
-**Rule:** a validation failure returns **422**, not 200 with `{ "success": false }`. Field
-problems never hide inside a success response.
+**400 vs 422, decided:**
+- **400 Bad Request** is only for a request the server cannot read as a request at all: an empty body, bytes that are not JSON, or the wrong content type. The server never starts checking fields.
+- **422 Unprocessable Content** is for JSON that parsed correctly but fails a field rule (missing, wrong type, out of range).
+- **A failed create never returns 200 with `{ "success": false }`.** Every failure uses a 4xx status and the error shape below.
+
+**Duplicate example (409, proposed):** the provider resends goal `pe-20261104-0042`, which the team already stored from the first push. The body is well formed and passes every field rule, so it is not 422. Accepting it would store the same goal twice, so the server refuses it with 409 and `error.code` = `CONFLICT`, naming the event id in `error.message`.
 
 ## One error shape for both operations
 
@@ -61,11 +65,18 @@ summary, so a coach or the provider can fix them all in one pass.
 - **Provider sends something that is not JSON.** 400, with no field details, because
   field checks never started.
 
+## Out of scope for this model
+
+- **Server crashes (5xx).** These are bugs to log, not a contract for providers or coaches.
+- **Token issuance and storage.** How a caller gets or keeps an identity is not designed here. Only the reserved 401 and 403 codes are listed.
+- **Database tables.** Storage shape is decided in a later step.
+- **A second client error format.** Every 4xx in this model uses the one error shape above.
+
 ## Open decisions
 
-1. **Duplicate events (409).** The story does not say whether a game event carries an id
-   from the provider. Without one, the server cannot tell whether a resend is a duplicate.
-   Until the brief decides, no operation returns 409 for events.
+1. **Duplicate events (409), needs stakeholder confirmation.** This model assumes each game
+   event carries an id from the provider (`provider_event_id`). The client story does not say
+   this. If the lead rejects it, the 409 row must be removed and duplicate handling redesigned.
 2. **Identity codes (401, 403).** Both are reserved. Which identity each caller presents
    is open, because provider identity is an open question in the brief.
 3. **Draft evaluations.** Not in scope here. If drafts exist, they need their own
