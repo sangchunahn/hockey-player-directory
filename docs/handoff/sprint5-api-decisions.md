@@ -1,37 +1,44 @@
 # Sprint 5 handoff: hockey event and coach evaluation APIs
 
 **For:** coaches, the product owner, and the teammate who adds login and storage next.
-**Sources:** the client story brief, the resource design, the OpenAPI contract (`openapi/hockey-ingestion.yaml`), and the acceptance criteria (`docs/api/acceptance-criteria.md`).
 
-## What the app can do now
+## The original goal
 
-- The hockey data provider can send a game event to one address: `/api/events`.
-- A coach can send one player's evaluation form to one address: `/api/evaluations`.
-- If a request is missing a required field, has a wrong value, or is out of range, the server sends back a list that names each bad field and says what to fix.
-- If the request is not readable at all (empty, not JSON, or the wrong type of content), the server says so and does not check the fields.
-- The server checks every request itself. It does not trust the browser or the provider to have checked first.
-- The tests in `tests/api/ingestion-validation.test.ts` confirm these behaviors.
+The client story (`docs/scoping/client-story-brief.md`) asks for two things:
 
-## What does not work yet
+1. A third-party hockey data provider pushes live game events, such as goals and penalties, into the team app.
+2. A coach submits a player evaluation form after practice, and the app refuses incomplete forms with clear field-level messages.
 
-- **Nobody is identified.** The server does not yet know whether a sender is really the hockey provider or a signed-in coach.
-- **Nothing is saved.** A good request gets a reply with a made-up id, but the event or form is not kept. Tomorrow it is gone.
-- **Duplicate events are not caught.** The provider could send the same event twice and both would be accepted once saving exists.
-- **Some rules are guesses.** Which rating names exist, the 1 to 5 scale, and the period range are proposals that a stakeholder still needs to confirm.
+## What shipped, and the outcome each part gives
+
+| Deliverable | Where it lives | Outcome for the people using it |
+|---|---|---|
+| Resource design | `docs/api/resource-design.md` | Two addresses, one per job: the provider sends events to `POST /api/events`, and a coach sends a form to `POST /api/evaluations`. Nothing else is offered yet. |
+| OpenAPI contract | `openapi/hockey-ingestion.yaml` | One written agreement for both addresses: what each request must contain, and what each reply looks like. |
+| Server-side field validation | `src/server/validation/` and `src/routes/api/` | The server checks every request itself. Good requests get `201 Created`. Requests that cannot be read get `400`. Requests with bad fields get `422`, with a list that names each bad field and what to fix. |
+| Acceptance criteria | `docs/api/acceptance-criteria.md` | The plain list of what the app must do in each case, such as a missing period or a rating above 5. |
+| Contract tests | `tests/api/ingestion-validation.test.ts` | 23 automatic checks that confirm the cases above. All pass. |
 
 ## Who owns what
 
-- **Frontend:** the coach's evaluation screen and any notes for the provider. The frontend can help people fill in the form, but it does not decide what gets accepted.
+- **Frontend:** the coach's evaluation screen and any instructions for the provider. The screen should show the field errors the server sent back. A check in the browser is never the final say; the server decides.
 - **Backend:** the only place that accepts or rejects a request. Every rule is checked here.
 - **Database:** does not exist in this sprint. Nothing is stored yet.
 - **People:** some decisions stay human. A coach still reviews a player after practice, and nothing in this software makes that call.
+
+## What still does not work
+
+- **Nobody is identified.** The server does not yet know whether a sender is really the hockey provider or a signed-in coach.
+- **Nothing is saved.** A good request gets a reply with a made-up id, but the event or form is not kept.
+- **Duplicate events are not caught.** The provider could send the same event twice, and both would be accepted once saving exists.
+- **Some rules are guesses.** The rating names, the 1 to 5 scale, and the period range are proposals that a stakeholder still needs to confirm.
 
 ## Next order
 
 1. **Identity first.** Decide how the provider and each coach prove who they are, then have the server check it before any request is accepted.
 2. **Saving second.** Once only known senders can get in, store the accepted events and forms.
 
-We save second on purpose. If we saved requests before knowing who sent them, we would be storing data we cannot trace or trust, and that would undo the checks already in place.
+Saving comes second on purpose. Storing requests before knowing who sent them would keep data we cannot trace or trust, and that would undo the checks already in place.
 
 ## Open questions for stakeholders
 
