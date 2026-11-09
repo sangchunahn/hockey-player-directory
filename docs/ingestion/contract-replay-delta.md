@@ -38,7 +38,7 @@ Add only these ideas to that file, as plain descriptions on the existing ingest 
 I read the diff myself, not only a summary.
 
 - Contract file the agent edited: openapi/hockey-ingestion.yaml
-- What changed, in one or two sentences: The 201 description for the game event push now says a replay returns the same success with the original event and stores nothing new, and the provider_event_id description now names it the idempotency key. No new field was added to the response. I also removed the contract's old proposed 409 response for a repeated provider_event_id, because it described a replay as a refused duplicate, which contradicts this promise.
+- What changed, in one or two sentences: The 201 description for the game event push now says a replay returns the same success with the original event and stores nothing new, and the provider_event_id description now names it the idempotency key. No new field was added to the response. I left the contract's old proposed 409 response for a repeated provider_event_id in place, because this step may not change status codes. That 409 still describes a replay as a refused duplicate, which conflicts with this promise. The promise here wins for what a replay returns (the original 201), and removing or rewording the 409 is left for a later step.
 - Did the edit add a second contract file? no
-- Did the edit rewrite endpoints, status codes, or validation? Endpoints: no. Validation: no. Status codes: one change, the proposed 409 on the game event push was removed because it was marked proposed and directly conflicted with the replay promise. The 201, 400, 401, 403, and 422 responses are unchanged, and the evaluations endpoint is untouched.
+- Did the edit rewrite endpoints, status codes, or validation? no. All status codes, including the proposed 409, are unchanged, and the evaluations endpoint is untouched.
 - Does the new wording match the key decision and the decision table? yes

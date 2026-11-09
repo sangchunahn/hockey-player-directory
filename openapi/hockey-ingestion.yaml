@@ -49,6 +49,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: >
+            Proposed: the provider_event_id was already stored. Refused as a duplicate.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '422':
           description: >
             The JSON parsed, but one or more fields are missing, the wrong type, or break a
