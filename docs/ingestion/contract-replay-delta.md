@@ -4,7 +4,7 @@
 
 When the provider sends the same event again, using the idempotency key named below, the endpoint must:
 
-- Return the original success: the same successful answer the contract already uses for a first accepted event. In this contract that is status 201 with the stored event as the body, plus an optional replayed hint set to true. No new status code is invented.
+- Return the original success: the same successful answer the contract already uses for a first accepted event. In this contract that is status 201 with the original stored event as the body, the same id and the same fields the first accept returned, with nothing added. No new status code and no new field is invented.
 - Not perform a second write: do not save the event again, so one goal is counted once.
 - Not return an error just because the event was already accepted. A conflict code is not the right choice, because the provider did nothing wrong.
 
@@ -38,7 +38,7 @@ Add only these ideas to that file, as plain descriptions on the existing ingest 
 I read the diff myself, not only a summary.
 
 - Contract file the agent edited: openapi/hockey-ingestion.yaml
-- What changed, in one or two sentences: The 201 description for the game event push now says a replay returns the same success with the original event and stores nothing new, the provider_event_id description now names it the idempotency key, and the stored event has an optional replayed hint. I also removed the contract's old proposed 409 response for a repeated provider_event_id, because it described a replay as a refused duplicate, which contradicts this promise.
+- What changed, in one or two sentences: The 201 description for the game event push now says a replay returns the same success with the original event and stores nothing new, and the provider_event_id description now names it the idempotency key. No new field was added to the response. I also removed the contract's old proposed 409 response for a repeated provider_event_id, because it described a replay as a refused duplicate, which contradicts this promise.
 - Did the edit add a second contract file? no
 - Did the edit rewrite endpoints, status codes, or validation? Endpoints: no. Validation: no. Status codes: one change, the proposed 409 on the game event push was removed because it was marked proposed and directly conflicted with the replay promise. The 201, 400, 401, 403, and 422 responses are unchanged, and the evaluations endpoint is untouched.
 - Does the new wording match the key decision and the decision table? yes

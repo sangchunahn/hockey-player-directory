@@ -145,9 +145,6 @@ components:
             id:
               type: string
               description: The team app's id for the stored event, returned on create.
-            replayed:
-              type: boolean
-              description: Optional hint. True when this reply is a replay of an event that was already stored.
 
     EvaluationRequest:
       type: object
