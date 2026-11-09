@@ -1,10 +1,9 @@
 # Replay prediction (sealed before any replay)
 
 ## Seal
-- Written at: 2026-11-08 17:18 MST, before this list was run
-- Written before any replay was run: yes. The Step 7 tests ran similar cases, but none of the deliveries below has been sent or simulated.
-- I did not send these deliveries, and no second agent or simulation was used to fill in the outcomes: yes
-- Who wrote this: an AI assistant (Claude) working for the student, from the student's earlier docs. I am not claiming the student typed it, and I am not claiming no agent was involved.
+- Written at: 2026-11-08 23:43 MST, before this list was run
+- Written before any replay was run: yes. None of the deliveries below has been sent or simulated.
+- I did not send these deliveries, and I did not ask an agent to fill in the outcomes: yes. The stored goal counts and what happens to each delivery are my own answers (D1 is 1 goal, D2 changes nothing, D3 is 2 goals, D4 is kept and makes 3 goals). An assistant only put my answers into this table and copied the response wording from docs/ingestion/contract-replay-delta.md.
 
 ## Rules I am applying (copied from my earlier docs, not new rules)
 - Source docs: docs/ingestion/event-outcome-decision-table.md, docs/ingestion/storage-rule.md, docs/ingestion/idempotency-key-decision.md, docs/ingestion/contract-replay-delta.md, docs/ingestion/storage-implementation-review.md
@@ -24,12 +23,12 @@ Game 14. The same key on an exact duplicate. Different keys when arrival order d
 | D4 | Jordan scores a goal earlier in the game | pe-14-038 | 11:45 | 4 | out of order |
 
 ## Expected results (mine, from the rules, not from a run)
-| Label | Expected stored stat after this delivery | Expected response | Decision-table case | Storage-rule phrase |
-| --- | --- | --- | --- | --- |
-| D1 | Sam's goal is stored once and coaches see 1 goal. | Status 201 with the new stored event. | first save | one key maps to one stored event |
-| D2 | Nothing changes. No second row is added and coaches still see 1 goal, Sam's. | Status 201 with the original stored event from D1, same id, nothing added. | duplicate | does not insert again |
-| D3 | Riley's goal is stored as a new event and coaches see 2 goals. | Status 201 with the new stored event. | first save | one key maps to one stored event |
-| D4 | Jordan's earlier goal is saved and counted anyway, nothing already stored is deleted, and coaches see 3 goals. | Status 201 with the new stored event. | out of order | keep it, do not drop it only because it arrived late |
+| Label | Expected stored stat after this delivery | Expected response | Decision-table case |
+| --- | --- | --- | --- |
+| D1 | Sam's goal is saved. 1 goal. | Status 201 with the new stored event. | first save |
+| D2 | It does not change anything, because it has the same key (pe-14-031) as D1. Still 1 goal. | Status 201 with the original stored event from D1, same id, nothing added. | duplicate |
+| D3 | Riley's goal is saved. 2 goals. | Status 201 with the new stored event. | first save |
+| D4 | Jordan's goal is kept even though it arrived late. 3 goals. | Status 201 with the new stored event. | out of order |
 
 ## Snapshot after the whole list
 - Goals stored: 3. Sam's goal arrived twice and is counted once, plus Riley's goal and Jordan's goal.
