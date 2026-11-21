@@ -17,10 +17,20 @@ function handlerFor(route: unknown): Handler {
 const postEvents = handlerFor(EventsRoute)
 const postEvaluations = handlerFor(EvaluationsRoute)
 
+// These routes now run the CSRF/origin gate (src/server/csrf.ts) before
+// validation. Requests here simulate a legitimate same-origin call so the
+// tests still exercise validation and write behavior, not the gate itself —
+// that gate has its own tests.
+process.env.APP_ORIGIN = 'http://localhost'
+
 function jsonRequest(url: string, body: unknown): Request {
   return new Request(`http://localhost${url}`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: {
+      'content-type': 'application/json',
+      origin: 'http://localhost',
+      'sec-fetch-site': 'same-origin',
+    },
     body: typeof body === 'string' ? body : JSON.stringify(body),
   })
 }
@@ -106,7 +116,7 @@ describe('POST /api/events (provider game-event push)', () => {
   it('E12: wrong content type is 400 with no details', async () => {
     const request = new Request('http://localhost/api/events', {
       method: 'POST',
-      headers: { 'content-type': 'text/plain' },
+      headers: { 'content-type': 'text/plain', origin: 'http://localhost', 'sec-fetch-site': 'same-origin' },
       body: JSON.stringify({ event_type: 'goal', period: 2 }),
     })
     const response = await postEvents({ request })
