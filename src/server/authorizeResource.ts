@@ -53,12 +53,12 @@ export function decideResourceAccess(role: string | null, kind: ResourceKind): '
  * may read this kind of record, in that order. A denied read and a missing
  * read both throw this same error so the caller cannot tell them apart.
  *
- * Today this always denies: docs/security/role-access-matrix.md open
- * question 1 (how a signed-in person's role is recorded) is still open, and
- * getCurrentStaff (src/server/get-current-staff.ts) does not return a role
- * yet, on purpose, until that question is answered. When a real role source
- * lands, pass its value into decideResourceAccess in place of `null` below;
- * decideResourceAccess itself is already correct against both matrices.
+ * The role comes from getCurrentStaff (src/server/get-current-staff.ts),
+ * which reads it through the caller's own session-bound client, never the
+ * service-role key. If that lookup fails for any reason, getCurrentStaff
+ * already returns role: null, and decideResourceAccess denies a null role,
+ * so a lookup failure here denies — it is never retried with a more
+ * privileged key and never treated as "allow."
  */
 export async function authorizeResource(input: { kind: ResourceKind; id: string }): Promise<{
   staffId: string
@@ -71,8 +71,7 @@ export async function authorizeResource(input: { kind: ResourceKind; id: string 
     throw new Error('Sign-in required')
   }
 
-  const role: string | null = null
-  const decision = decideResourceAccess(role, input.kind)
+  const decision = decideResourceAccess(staff.role, input.kind)
   if (decision !== 'allow') {
     // Same outcome the caller should use when the row is simply missing.
     throw new Error('Record not found')

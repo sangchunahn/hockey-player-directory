@@ -42,24 +42,41 @@ every signed-in staff role — this is a single-team app, so there is no
 per-team id to narrow access by. `decideResourceAccess` therefore takes only
 a role and a resource kind, not a team id.
 
-## An open gap this file does not paper over
+## Where the role now comes from
 
-`docs/security/role-access-matrix.md` leaves open question 1 unanswered: how
-a signed-in person's role is actually recorded and read back. Because of
-that, `src/server/get-current-staff.ts` deliberately returns only `{ id,
-email }` today — no `role` field exists yet to read. So right now,
-`authorizeResource` always denies every call: it passes `role: null` into
-`decideResourceAccess`, which denies by design when the role is unknown,
-matching "no role means no access" in `docs/security/rls-policy-spec.md`.
-`decideResourceAccess` itself is already correct against both matrices and
-is exported so it can be unit-tested directly. Once a real role source
-exists, wiring it in is a one-line change (replace the `null` with that
-role) — this step does not build that source and does not edit
-`src/server/get-current-staff.ts` or `src/server/scouting-notes.ts`.
+`src/server/get-current-staff.ts` reads the caller's role by calling
+`public.current_staff_role()` (added in
+`supabase/migrations/20250321000000_hockey_staff_rls.sql`) through the
+per-request, session-bound client from `requireSession` — the public anon
+key plus this person's own session cookies, **never the service-role key**.
+That function reads only the caller's own `staff_profiles` row (`auth.uid()`
+on the server, not a value the browser sends), which matches the
+`staff_role_assignment: own row only` cell in
+`docs/security/role-access-matrix.md`. Reading an already-assigned role this
+way does not require role-access-matrix open question 1 (how an admin
+*assigns* a role in the first place) to be answered; it only reads whatever
+role, if any, already exists.
 
-A denied read and a missing read look identical to the caller: both throw
-the same "Record not found" error from `authorizeResource`, so the app never
-confirms that a rejected id belongs to someone else's real record.
+`authorizeResource` now passes that real role into `decideResourceAccess`
+instead of a hardcoded `null`. `decideResourceAccess` itself was already
+correct against both matrices and is exported so it can be unit-tested
+directly; this step only replaces what feeds it.
+
+**A failed role lookup must deny, never retry with a more privileged key.**
+If the RPC call errors for any reason — the migration not applied to this
+project yet, the function renamed, Supabase Auth briefly unreachable —
+`getCurrentStaff` returns `role: null` for that request. A `null` role is
+"no role means no access" in `docs/security/rls-policy-spec.md`: it is
+**not** a signal to re-run the same lookup against the service-role client,
+which bypasses RLS and must never answer a staff member's own request
+(`src/lib/supabase/server.ts`, `docs/access/service-role-key-rule.md`). The
+one and only role source for a signed-in staff member's own read is their
+own session-bound client; if that fails, the read is denied, the same as if
+the row was simply missing.
+
+A denied read and a missing read still look identical to the caller: both
+throw the same "Record not found" error from `authorizeResource`, so the app
+never confirms that a rejected id belongs to someone else's real record.
 
 ## What this file must never do
 
@@ -75,8 +92,9 @@ confirms that a rejected id belongs to someone else's real record.
 1. An id like `player';select` is rejected by `assertSafeIdentifier` before
    `authorizeResource` ever calls `getCurrentStaff` or touches a query.
 2. A signed-in caller with a valid UUID for `player` or `scouting_note` is
-   still denied today, because `role` resolves to `null` until
-   `docs/security/role-access-matrix.md` open question 1 is answered and a
-   real role source is wired in. `decideResourceAccess('scouting', 'scouting_note')`
-   returns `'allow'` directly, showing the matrix logic is correct and ready
-   for that wiring.
+   now checked against their real role, read via
+   `public.current_staff_role()` on their own session-bound client. A caller
+   with no `staff_profiles` row, or any lookup failure, still resolves to
+   `role: null` and is denied, the same fail-closed outcome as before this
+   step. `decideResourceAccess('scouting', 'scouting_note')` returns
+   `'allow'` directly, showing the matrix logic the real role now feeds into.
