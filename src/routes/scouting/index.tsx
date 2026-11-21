@@ -32,6 +32,10 @@ function ScoutingNotesPage() {
               Go to staff sign-in
             </Link>
           </p>
+        ) : result.status === 'forbidden' ? (
+          <p role="alert" className="text-slate-700">
+            Your staff role does not include scouting notes.
+          </p>
         ) : result.status === 'error' ? (
           <p role="alert" className="text-red-700">
             {result.message}
