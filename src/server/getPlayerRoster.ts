@@ -1,10 +1,15 @@
 // Thin server boundary for one player roster read.
 // Front desk only: parse the id, decide read-vs-write, call the service,
-// map the outcome. No Supabase client, no business rule, no CSRF check on
-// this read. See docs/architecture/layer-map.md.
+// map the outcome. No Supabase client, no business rule. The CSRF/origin
+// check (src/server/csrf.ts) is wired into the write branch below, guarded
+// by callChangesData, and never runs on the read path — a missing or
+// foreign-origin CSRF signal must never fail a read. See
+// docs/architecture/layer-map.md.
 
 import { createServerFn } from '@tanstack/react-start'
+import { getRequest } from '@tanstack/react-start/server'
 
+import { checkCsrf } from './csrf'
 import { getCurrentStaff } from './get-current-staff'
 import { readPlayerRosterForStaff, type PlayerRosterView, type StaffActor } from '../services/playerRosterService'
 
@@ -41,10 +46,21 @@ export const getPlayerRoster = createServerFn({ method: 'GET' })
       return parsed
     }
 
-    // callChangesData is always false in this file, so there is nothing to
-    // guard with the CSRF helper here. A later write boundary is the one
-    // that calls src/server/csrf.ts before it changes anything.
+    // callChangesData is always false in this file, so this branch never
+    // runs today — but if a later edit ever flips it, the CSRF/origin check
+    // (src/server/csrf.ts) must run here, before the service is called,
+    // exactly like the write routes in src/routes/api/events.ts and
+    // src/routes/api/evaluations.ts. It is called ONLY inside this branch:
+    // the read path above never reaches this line, so a missing or
+    // foreign-origin CSRF signal can never fail a read.
     if (callChangesData) {
+      const csrf = checkCsrf(getRequest())
+      if (!csrf.ok) {
+        return { ok: false, error: 'Could not load this player.' }
+      }
+      // A real write boundary would call the service here, after the CSRF
+      // check above passes. This file only reads, so there is nothing
+      // further to call.
       return { ok: false, error: 'Could not load this player.' }
     }
 
