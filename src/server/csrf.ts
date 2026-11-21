@@ -1,6 +1,7 @@
 // Server-side CSRF / origin gate for writes.
 // Does not sign anyone in and must not import Supabase.
-// Ingestion routes will call this later. Do not edit those routes in this step.
+// Wired into src/routes/api/events.ts and src/routes/api/evaluations.ts,
+// which call csrfBlockResponse before accepting a write.
 // See docs/security/csrf-defense-notes.md and docs/security/attack-surface-map.md.
 
 export type CsrfReason = 'cross-site' | 'origin-mismatch' | 'missing-origin' | 'allowlist-empty'

@@ -42,12 +42,12 @@ page.
   copied token is a different problem that authentication, not this file,
   has to answer.
 
-## Where it will be used next
+## Where it is used
 
-Not wired yet. The next wrap points are `src/routes/api/events.ts` and
-`src/routes/api/evaluations.ts` — the two ingestion routes named in
-`docs/security/attack-surface-map.md`. This step does not edit those route
-files; a later step calls `csrfBlockResponse` from inside them.
+Wired in. `src/routes/api/events.ts` and `src/routes/api/evaluations.ts` —
+the two ingestion routes named in `docs/security/attack-surface-map.md` —
+both call `csrfBlockResponse(request)` as the first line of their `POST`
+handler, before any field validation or persistence.
 
 ## Allowlist
 
