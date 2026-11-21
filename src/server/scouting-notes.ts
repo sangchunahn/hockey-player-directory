@@ -22,6 +22,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { setResponseStatus } from '@tanstack/react-start/server'
 
+import { authorizeResource } from './authorizeResource'
 import { requireSession, UnauthorizedError } from '#/lib/auth/require-session'
 
 export type ScoutingNoteRow = {
@@ -71,9 +72,22 @@ export const listScoutingNotes = createServerFn({ method: 'GET' }).handler(async
     return { status: 'error', message: 'Could not load scouting notes. Try again.' }
   }
 
+  // 4) IDOR gate (src/server/authorizeResource.ts, docs/security/idor-defense-notes.md).
+  // This function takes no id from the caller, so there is nothing to check
+  // before the query above runs. Instead, each row RLS already returned is
+  // re-checked by its own id before it is ever handed back, so a note never
+  // reaches the response unless authorizeResource also allows it. Today that
+  // always denies (see idor-defense-notes.md: no role source exists yet), so
+  // this list is empty for every caller until that gap is resolved.
   const notes: ScoutingNoteRow[] = []
   for (const row of data) {
-    if (row.note !== null) notes.push({ ...row, note: row.note })
+    if (row.note === null) continue
+    try {
+      await authorizeResource({ kind: 'scouting_note', id: row.id })
+    } catch {
+      continue // denied, or not a safe id: never expose this row
+    }
+    notes.push({ ...row, note: row.note })
   }
 
   return { status: 'ok', viewerEmail: session.user.email, notes }
