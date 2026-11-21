@@ -1,62 +1,47 @@
-// listScoutingNotes: the protected scouting data path.
+// Scouting notes: single-record reads and writes, each gated by
+// authorizeResource (src/server/authorizeResource.ts) on that EXACT record's
+// own real id, called before any Supabase table query, insert, update, or
+// delete touches that id. A denial returns a forbidden result; the database
+// is never touched for a denied id.
 //
-// Order:
-//   1. authorizeResource (src/server/authorizeResource.ts) runs FIRST,
-//      before any Supabase table query at all — including the id-only
-//      query below. This endpoint lists every note the caller's role may
-//      see, rather than one record, so there is no real note id yet to
-//      check at this point. LIST_ACCESS_PROBE_ID is a fixed placeholder,
-//      never a real row's id and never sent to any query: authorizeResource
-//      validates its shape then calls decideResourceAccess(role, kind),
-//      whose answer depends only on the caller's role and the resource
-//      kind, never on which id was passed. So this call still runs the
-//      real checker's real role decision, before the database is touched,
-//      and a denial here returns a forbidden result — not an empty list.
-//   2. requireSession() verifies the Supabase session a second time, to get
-//      the request-bound client the queries below need (authorizeResource's
-//      own identity check in step 1 does not expose that client).
-//   3. A minimal, content-free query gets candidate ids only (no note text,
-//      no player or game fields).
-//   4. authorizeResource re-checks EACH real id, one at a time, before the
-//      content-bearing query runs for any of them. A denied id is dropped
-//      from the allow-list here; it never reaches the next query. (In this
-//      single-team app decideResourceAccess only varies by role and kind,
-//      so after step 1 allows, every id here will too — this loop is kept
-//      anyway as a second, per-id check, not a shortcut around it.)
-//   5. The content query runs only against the SAME ids authorizeResource
-//      already approved in step 4 (`.in('id', allowedIds)`) — the note
-//      text, player, and game fields for a denied id are never fetched at
-//      all, not fetched-then-discarded.
-//   6. Row-level security (supabase/migrations/20250321000000_hockey_staff_rls.sql,
-//      policy "scouting_events: scouting reads all") still independently
-//      filters both queries by role: scouting staff get every row, coaching
-//      and medical get none (docs/security/rls-policy-spec.md,
-//      scouting_events SELECT). authorizeResource is a second, app-level
-//      gate layered on top of RLS, not a replacement for it.
+// getScoutingNote(id), createScoutingNote(input), updateScoutingNote(id, patch),
+// and deleteScoutingNote(id) all follow the same order:
+//   1. authorizeResource({ kind: 'scouting_note', id }) — for create, `id` is
+//      minted here (crypto.randomUUID()) before the insert, so the SAME id
+//      is what gets checked and what gets written; for get/update/delete,
+//      `id` is the caller's own input, checked before it is ever used in a
+//      query. A denial (or an unsafe-shaped id — authorizeResource itself
+//      calls assertSafeIdentifier) returns { status: 'forbidden' } with 403,
+//      before requireSession or any `.from('scouting_events')` call runs.
+//   2. requireSession() verifies the Supabase session, to get the
+//      request-bound client RLS needs (authorizeResource's own identity
+//      check does not expose that client).
+//   3. The query/write runs with that client, using the same id authorized
+//      in step 1 (`.eq('id', id)`, or that literal id on insert).
+//   4. Row-level security (supabase/migrations/20250321000000_hockey_staff_rls.sql)
+//      still independently governs the actual read/insert/update/delete:
+//      scouting and assistant_scout may insert and update their own rows,
+//      no role may delete, coaching and medical get no rows at all. The
+//      MAY_READ map authorizeResource checks is a coarse "may this role
+//      touch scouting_note resources at all" gate, not a replacement for
+//      RLS's per-operation rules — RLS stays the backstop underneath it.
 //
-// This module takes no input at all, so a role, user id, or "isLoggedIn"
-// sent by the browser can't influence anything, and there is no flag of any
-// kind that skips the authorizeResource call.
+// listScoutingNotes is different: it has no single id to check, because it
+// returns every note a role may see, and there is no id to authorize before
+// the query that discovers which ids exist — authorizeResource's contract
+// (a real id, checked before that id is read) does not apply to "all of
+// them, whatever they turn out to be." It is protected by RLS alone, the
+// same way it was before authorizeResource existed in this codebase; it is
+// not a read of one record, so it is not where this file's IDOR fix lives.
 //
 // Scouting notes live in public.scouting_events: the free-text `note` column
 // (always set for `note`-type events, optional on others).
-//
-// Writes to scouting_events (create, update) are not in this file. They live
-// in src/lib/scouting/mutations.ts (createScoutingEvent, updateScoutingEvent),
-// a browser-side module using the anon-key client, not a server function —
-// out of scope for this file's commit. If a write server function is added
-// here later, it must call authorizeResource with the record's own id first
-// and return the same 403 shape on denial, before its insert/update/delete.
 
 import { createServerFn } from '@tanstack/react-start'
 import { setResponseStatus } from '@tanstack/react-start/server'
 
 import { authorizeResource } from './authorizeResource'
 import { requireSession, UnauthorizedError } from '#/lib/auth/require-session'
-
-// Shape-only placeholder for the step-1 role gate. Never a real
-// scouting_events.id, never used in any .eq/.in filter below.
-const LIST_ACCESS_PROBE_ID = '00000000-0000-0000-0000-000000000000'
 
 export type ScoutingNoteRow = {
   id: string
@@ -71,30 +56,221 @@ export type ScoutingNoteRow = {
 export type ScoutingNotesResult =
   | { status: 'ok'; viewerEmail: string | null; notes: ScoutingNoteRow[] }
   | { status: 'signed-out' }
+  | { status: 'error'; message: string }
+
+export type ScoutingNoteResult =
+  | { status: 'ok'; note: ScoutingNoteRow }
+  | { status: 'signed-out' }
+  | { status: 'forbidden' }
+  | { status: 'not-found' }
+  | { status: 'error'; message: string }
+
+export type ScoutingNoteWriteResult =
+  | { status: 'ok'; id: string }
+  | { status: 'signed-out' }
   | { status: 'forbidden' }
   | { status: 'error'; message: string }
 
 const NOTE_COLUMNS =
   'id, note, event_type, period, created_at, player:players!scouting_events_player_id_fkey(id, display_name, position, team_label), game:games!scouting_events_game_id_fkey(id, played_on, home_team, away_team)' as const
 
-export const listScoutingNotes = createServerFn({ method: 'GET' }).handler(async (): Promise<ScoutingNotesResult> => {
-  // 1) authorizeResource gate, before any Supabase table query at all.
-  try {
-    await authorizeResource({ kind: 'scouting_note', id: LIST_ACCESS_PROBE_ID })
-  } catch (error) {
-    if (error instanceof UnauthorizedError) {
-      setResponseStatus(error.status)
-      return error.status === 401 ? { status: 'signed-out' } : { status: 'error', message: error.message }
-    }
-    // Denied: authorizeResource's role check failed. Forbidden, not an
-    // empty list — no scouting_events query has run at all yet.
-    setResponseStatus(403)
-    return { status: 'forbidden' }
+/** Shared by every single-record function below: maps a denial/error to a result. */
+function denialResult<T extends { status: string }>(error: unknown): T {
+  if (error instanceof UnauthorizedError) {
+    setResponseStatus(error.status)
+    return (error.status === 401 ? { status: 'signed-out' } : { status: 'error', message: error.message }) as T
   }
+  // assertSafeIdentifier's "not a safe id" and decideResourceAccess's "deny"
+  // both surface as authorizeResource throwing a plain Error here. Same
+  // outcome either way: forbidden, no row content, no query ran.
+  setResponseStatus(403)
+  return { status: 'forbidden' } as T
+}
 
-  // 2) Identity gate again, to get the request-bound client the queries
-  // below need. authorizeResource's own identity check in step 1 does not
-  // expose that client.
+// ---------------------------------------------------------------------------
+// Read one note
+// ---------------------------------------------------------------------------
+
+export const getScoutingNote = createServerFn({ method: 'GET' })
+  .validator((input: unknown) => input)
+  .handler(async ({ data: rawNoteId }): Promise<ScoutingNoteResult> => {
+    const noteId = typeof rawNoteId === 'string' ? rawNoteId : ''
+
+    // 1) authorizeResource on this exact id, before any Supabase call.
+    try {
+      await authorizeResource({ kind: 'scouting_note', id: noteId })
+    } catch (error) {
+      return denialResult(error)
+    }
+
+    // 2) Identity gate again, for the request-bound client.
+    let session: Awaited<ReturnType<typeof requireSession>>
+    try {
+      session = await requireSession()
+    } catch (error) {
+      return denialResult(error)
+    }
+
+    // 3) The SAME id authorized above is what this query reads.
+    const { data, error } = await session.supabase
+      .from('scouting_events')
+      .select(NOTE_COLUMNS)
+      .eq('id', noteId)
+      .not('note', 'is', null)
+      .maybeSingle()
+
+    if (error) {
+      setResponseStatus(500)
+      console.error('getScoutingNote failed', error.code)
+      return { status: 'error', message: 'Could not load this note. Try again.' }
+    }
+    if (!data || data.note === null) {
+      return { status: 'not-found' }
+    }
+
+    return { status: 'ok', note: { ...data, note: data.note } }
+  })
+
+// ---------------------------------------------------------------------------
+// Create one note
+// ---------------------------------------------------------------------------
+
+export type CreateScoutingNoteInput = {
+  playerId: string
+  gameId: string
+  period?: number | null
+  note: string
+}
+
+export const createScoutingNote = createServerFn({ method: 'POST' })
+  .validator((input: unknown) => input as CreateScoutingNoteInput)
+  .handler(async ({ data: input }): Promise<ScoutingNoteWriteResult> => {
+    // The new row's id is minted HERE, before authorizeResource runs, so the
+    // same id is both what gets checked and what gets written below — never
+    // an id read back from the database first.
+    const noteId = crypto.randomUUID()
+
+    // 1) authorizeResource on that exact id, before any Supabase call.
+    try {
+      await authorizeResource({ kind: 'scouting_note', id: noteId })
+    } catch (error) {
+      return denialResult(error)
+    }
+
+    // 2) Identity gate again, for the request-bound client.
+    let session: Awaited<ReturnType<typeof requireSession>>
+    try {
+      session = await requireSession()
+    } catch (error) {
+      return denialResult(error)
+    }
+
+    if (!input.note || input.note.trim() === '') {
+      return { status: 'error', message: 'A note needs text.' }
+    }
+
+    // 3) Insert with the SAME id authorized above.
+    const { error } = await session.supabase.from('scouting_events').insert({
+      id: noteId,
+      player_id: input.playerId,
+      game_id: input.gameId,
+      event_type: 'note',
+      period: input.period ?? null,
+      note: input.note.trim(),
+    })
+
+    if (error) {
+      setResponseStatus(500)
+      console.error('createScoutingNote failed', error.code)
+      return { status: 'error', message: 'Could not save this note. Try again.' }
+    }
+
+    return { status: 'ok', id: noteId }
+  })
+
+// ---------------------------------------------------------------------------
+// Update one note
+// ---------------------------------------------------------------------------
+
+export type UpdateScoutingNotePatch = { period?: number | null; note?: string }
+
+export const updateScoutingNote = createServerFn({ method: 'POST' })
+  .validator((input: unknown) => input as { noteId: string; patch: UpdateScoutingNotePatch })
+  .handler(async ({ data: { noteId, patch } }): Promise<ScoutingNoteWriteResult> => {
+    // 1) authorizeResource on this exact id, before any Supabase call.
+    try {
+      await authorizeResource({ kind: 'scouting_note', id: noteId })
+    } catch (error) {
+      return denialResult(error)
+    }
+
+    // 2) Identity gate again, for the request-bound client.
+    let session: Awaited<ReturnType<typeof requireSession>>
+    try {
+      session = await requireSession()
+    } catch (error) {
+      return denialResult(error)
+    }
+
+    const changes: { period?: number | null; note?: string } = {}
+    if (patch.period !== undefined) changes.period = patch.period
+    if (patch.note !== undefined) changes.note = patch.note.trim()
+
+    // 3) Update filtered by the SAME id authorized above.
+    const { error } = await session.supabase.from('scouting_events').update(changes).eq('id', noteId)
+
+    if (error) {
+      setResponseStatus(500)
+      console.error('updateScoutingNote failed', error.code)
+      return { status: 'error', message: 'Could not update this note. Try again.' }
+    }
+
+    return { status: 'ok', id: noteId }
+  })
+
+// ---------------------------------------------------------------------------
+// Delete one note
+// ---------------------------------------------------------------------------
+
+export const deleteScoutingNote = createServerFn({ method: 'POST' })
+  .validator((input: unknown) => input as string)
+  .handler(async ({ data: noteId }): Promise<ScoutingNoteWriteResult> => {
+    // 1) authorizeResource on this exact id, before any Supabase call.
+    try {
+      await authorizeResource({ kind: 'scouting_note', id: noteId })
+    } catch (error) {
+      return denialResult(error)
+    }
+
+    // 2) Identity gate again, for the request-bound client.
+    let session: Awaited<ReturnType<typeof requireSession>>
+    try {
+      session = await requireSession()
+    } catch (error) {
+      return denialResult(error)
+    }
+
+    // 3) Delete filtered by the SAME id authorized above. RLS has no DELETE
+    // policy for any role (see the migration's comment above the policies),
+    // so this always fails at the database layer today — authorizeResource
+    // passing is not permission to delete; RLS still decides that.
+    const { error } = await session.supabase.from('scouting_events').delete().eq('id', noteId)
+
+    if (error) {
+      setResponseStatus(500)
+      console.error('deleteScoutingNote failed', error.code)
+      return { status: 'error', message: 'Could not delete this note. Try again.' }
+    }
+
+    return { status: 'ok', id: noteId }
+  })
+
+// ---------------------------------------------------------------------------
+// List every note a role may see (RLS-gated; see the module comment above
+// for why authorizeResource's single-id contract does not apply here)
+// ---------------------------------------------------------------------------
+
+export const listScoutingNotes = createServerFn({ method: 'GET' }).handler(async (): Promise<ScoutingNotesResult> => {
   let session: Awaited<ReturnType<typeof requireSession>>
   try {
     session = await requireSession()
@@ -108,48 +284,14 @@ export const listScoutingNotes = createServerFn({ method: 'GET' }).handler(async
     throw error
   }
 
-  // 3) Id-only query: no note text, no player, no game fields yet. Only
-  // enough to hand each real id to authorizeResource before any content loads.
-  const { data: idRows, error: idError } = await session.supabase
-    .from('scouting_events')
-    .select('id')
-    .not('note', 'is', null)
-    .order('created_at', { ascending: false })
-
-  if (idError) {
-    setResponseStatus(500)
-    console.error('listScoutingNotes id query failed', idError.code)
-    return { status: 'error', message: 'Could not load scouting notes. Try again.' }
-  }
-
-  // 4) authorizeResource checks each real id by itself, before the content
-  // query below ever runs for that id.
-  const allowedIds: string[] = []
-  for (const row of idRows) {
-    try {
-      await authorizeResource({ kind: 'scouting_note', id: row.id })
-      allowedIds.push(row.id)
-    } catch {
-      continue // denied, or not a safe id: never fetch this row's content
-    }
-  }
-
-  if (allowedIds.length === 0) {
-    return { status: 'ok', viewerEmail: session.user.email, notes: [] }
-  }
-
-  // 5) Content query: the SAME ids authorizeResource already approved, and
-  // no others.
   const { data, error } = await session.supabase
     .from('scouting_events')
     .select(NOTE_COLUMNS)
-    .in('id', allowedIds)
     .not('note', 'is', null)
     .order('created_at', { ascending: false })
 
   if (error) {
     setResponseStatus(500)
-    // Raw Postgres text stays on the server.
     console.error('listScoutingNotes failed', error.code)
     return { status: 'error', message: 'Could not load scouting notes. Try again.' }
   }
