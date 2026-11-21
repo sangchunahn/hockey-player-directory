@@ -26,13 +26,12 @@
 //      touch scouting_note resources at all" gate, not a replacement for
 //      RLS's per-operation rules — RLS stays the backstop underneath it.
 //
-// listScoutingNotes is different: it has no single id to check, because it
-// returns every note a role may see, and there is no id to authorize before
-// the query that discovers which ids exist — authorizeResource's contract
-// (a real id, checked before that id is read) does not apply to "all of
-// them, whatever they turn out to be." It is protected by RLS alone, the
-// same way it was before authorizeResource existed in this codebase; it is
-// not a read of one record, so it is not where this file's IDOR fix lives.
+// There is no bulk "list every note" function here on purpose: listing
+// requires discovering which ids exist, which requires reading
+// scouting_events before any id could be authorized — the opposite of this
+// file's "authorize the id, then read" contract. See the note near the
+// bottom of this file for where a bulk, RLS-only view already lives
+// instead.
 //
 // Scouting notes live in public.scouting_events: the free-text `note` column
 // (always set for `note`-type events, optional on others).
@@ -52,11 +51,6 @@ export type ScoutingNoteRow = {
   player: { id: string; display_name: string; position: string; team_label: string }
   game: { id: string; played_on: string; home_team: string; away_team: string }
 }
-
-export type ScoutingNotesResult =
-  | { status: 'ok'; viewerEmail: string | null; notes: ScoutingNoteRow[] }
-  | { status: 'signed-out' }
-  | { status: 'error'; message: string }
 
 export type ScoutingNoteResult =
   | { status: 'ok'; note: ScoutingNoteRow }
@@ -265,40 +259,13 @@ export const deleteScoutingNote = createServerFn({ method: 'POST' })
     return { status: 'ok', id: noteId }
   })
 
-// ---------------------------------------------------------------------------
-// List every note a role may see (RLS-gated; see the module comment above
-// for why authorizeResource's single-id contract does not apply here)
-// ---------------------------------------------------------------------------
-
-export const listScoutingNotes = createServerFn({ method: 'GET' }).handler(async (): Promise<ScoutingNotesResult> => {
-  let session: Awaited<ReturnType<typeof requireSession>>
-  try {
-    session = await requireSession()
-  } catch (error) {
-    if (error instanceof UnauthorizedError) {
-      setResponseStatus(error.status)
-      return error.status === 401
-        ? { status: 'signed-out' }
-        : { status: 'error', message: error.message }
-    }
-    throw error
-  }
-
-  const { data, error } = await session.supabase
-    .from('scouting_events')
-    .select(NOTE_COLUMNS)
-    .not('note', 'is', null)
-    .order('created_at', { ascending: false })
-
-  if (error) {
-    setResponseStatus(500)
-    console.error('listScoutingNotes failed', error.code)
-    return { status: 'error', message: 'Could not load scouting notes. Try again.' }
-  }
-
-  const notes: ScoutingNoteRow[] = data
-    .filter((row): row is typeof row & { note: string } => row.note !== null)
-    .map((row) => ({ ...row, note: row.note }))
-
-  return { status: 'ok', viewerEmail: session.user.email, notes }
-})
+// There is deliberately no bulk "list every note" function in this file.
+// That would need to read scouting_events to discover which ids exist
+// before any id could be checked, which is exactly the "database read not
+// already tied to an authorized id" shape this file must not contain. A
+// bulk, RLS-only view of scouting_events already exists at the board level
+// (src/lib/scouting/hooks.ts -> useEventBoard, used by
+// src/routes/scouting/events.tsx) — a client-side read gated by RLS alone,
+// not by this file's id-first authorizeResource contract. The two are
+// different authorization models for two different operations; this file
+// only implements the id-first one, for one record at a time.
