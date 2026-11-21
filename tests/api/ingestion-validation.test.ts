@@ -194,7 +194,7 @@ describe('POST /api/evaluations (coach evaluation form)', () => {
   it('V11: wrong content type is 400 with no details', async () => {
     const request = new Request('http://localhost/api/evaluations', {
       method: 'POST',
-      headers: { 'content-type': 'text/plain' },
+      headers: { 'content-type': 'text/plain', origin: 'http://localhost', 'sec-fetch-site': 'same-origin' },
       body: JSON.stringify({ player_id: 'p-17', ratings: { skating: 4 } }),
     })
     const response = await postEvaluations({ request })
