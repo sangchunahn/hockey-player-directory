@@ -28,39 +28,41 @@ export function parsePlayerId(raw: unknown): { ok: true; playerId: string } | { 
   return { ok: true, playerId }
 }
 
-export async function readPlayerRoster(rawPlayerId: unknown): Promise<PlayerRosterResponse> {
-  const parsed = parsePlayerId(rawPlayerId)
-  if (!parsed.ok) {
-    return parsed
-  }
-
-  // callChangesData is always false in this file, so there is nothing to
-  // guard with the CSRF helper here. A later write boundary is the one that
-  // calls src/server/csrf.ts before it changes anything.
-  if (callChangesData) {
-    return { ok: false, error: 'Could not load this player.' }
-  }
-
-  try {
-    const result = await readPlayerRosterForStaff(parsed.playerId)
-    switch (result.outcome) {
-      case 'missing_id':
-        return { ok: false, error: 'Player id is not valid.' }
-      case 'not_allowed':
-      case 'not_found':
-        // Same message either way: denied and missing must look alike
-        // (docs/security/idor-defense-notes.md).
-        return { ok: false, error: 'Player not found.' }
-      case 'allowed':
-        return { ok: true, player: result.view }
-    }
-  } catch {
-    // The service's or data-access layer's real error never reaches the
-    // browser: no table name, no stack trace.
-    return { ok: false, error: 'Could not load this player.' }
-  }
-}
-
+// The service/data-access import chain is only reached from inside this
+// handler closure, never from a second plain exported function. That is
+// what lets TanStack Start split it into a server-only chunk instead of
+// bundling the Supabase client into the browser (see src/data/playerAccess.ts).
 export const getPlayerRoster = createServerFn({ method: 'GET' })
   .validator((input: unknown) => input)
-  .handler(async ({ data }) => readPlayerRoster(data))
+  .handler(async ({ data: rawPlayerId }): Promise<PlayerRosterResponse> => {
+    const parsed = parsePlayerId(rawPlayerId)
+    if (!parsed.ok) {
+      return parsed
+    }
+
+    // callChangesData is always false in this file, so there is nothing to
+    // guard with the CSRF helper here. A later write boundary is the one
+    // that calls src/server/csrf.ts before it changes anything.
+    if (callChangesData) {
+      return { ok: false, error: 'Could not load this player.' }
+    }
+
+    try {
+      const result = await readPlayerRosterForStaff(parsed.playerId)
+      switch (result.outcome) {
+        case 'missing_id':
+          return { ok: false, error: 'Player id is not valid.' }
+        case 'not_allowed':
+        case 'not_found':
+          // Same message either way: denied and missing must look alike
+          // (docs/security/idor-defense-notes.md).
+          return { ok: false, error: 'Player not found.' }
+        case 'allowed':
+          return { ok: true, player: result.view }
+      }
+    } catch {
+      // The service's or data-access layer's real error never reaches the
+      // browser: no table name, no stack trace.
+      return { ok: false, error: 'Could not load this player.' }
+    }
+  })
