@@ -9,7 +9,10 @@ decisions — it does not say the tool is finished or approved to store them.
 The tool is about to hold confidential roster decisions: who is injured,
 who might be traded, and private scout write-ups. This sprint's work is
 about making sure those facts cannot leak through the web app before any
-of that confidential data is actually stored.
+of that confidential data is actually stored. Before any of that is
+trusted to the tool, it has to survive a hostile review: someone actively
+trying to break in, or to peek at another team's notes by editing a URL,
+forging a request, or slipping bad input into a form.
 
 ## What we mapped
 
@@ -61,6 +64,14 @@ every package in `package.json` against three questions (does it touch
 sign-in, page HTML, or server requests) and ran `npm audit`, which reported
 zero known vulnerabilities across the installed packages at review time.
 No package was upgraded or removed in that review.
+
+That result is not the final word on dependency risk. `npm audit` only
+catches vulnerabilities already published to its database; a flaw
+disclosed tomorrow in a package this app already uses would report the
+same "zero known" result today and still be real risk. No package version
+was pinned or upgraded in this review, so nothing here protects against a
+future update silently introducing a problem, this review was a judgment
+pass on the dependency list as it stood, not an ongoing guarantee.
 
 ## How a player read is layered now
 
