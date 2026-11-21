@@ -48,34 +48,57 @@ export function decideResourceAccess(role: string | null, kind: ResourceKind): '
   return allowed.includes(kind) ? 'allow' : 'deny'
 }
 
+/** Who is asking, as plain data — never a hidden session read. */
+export type StaffActor = { staffId: string; role: string | null }
+
 /**
- * Verifies the id is safe, the caller is signed in, and the caller's role
- * may read this kind of record, in that order. A denied read and a missing
- * read both throw this same error so the caller cannot tell them apart.
+ * Verifies the id is safe and the GIVEN actor's role may read this kind of
+ * record, in that order. Takes the actor as ordinary data: no session read,
+ * no getCurrentStaff call, no Request or cookies. A denied read and a
+ * missing read both throw this same error so the caller cannot tell them
+ * apart.
  *
- * The role comes from getCurrentStaff (src/server/get-current-staff.ts),
- * which reads it through the caller's own session-bound client, never the
- * service-role key. If that lookup fails for any reason, getCurrentStaff
- * already returns role: null, and decideResourceAccess denies a null role,
- * so a lookup failure here denies — it is never retried with a more
- * privileged key and never treated as "allow."
+ * Callers that already know who is asking — a service that received a
+ * StaffActor as a plain argument, or a test with a fake actor — use this
+ * directly, so the authorization decision can be exercised with no session,
+ * no HTTP, and no mocked identity call.
  */
-export async function authorizeResource(input: { kind: ResourceKind; id: string }): Promise<{
-  staffId: string
-  resourceId: string
-}> {
+export async function authorizeResourceForActor(
+  actor: StaffActor,
+  input: { kind: ResourceKind; id: string },
+): Promise<{ staffId: string; resourceId: string }> {
   const resourceId = assertSafeIdentifier(input.id)
 
-  const staff = await getCurrentStaff()
-  if (!staff?.id) {
-    throw new Error('Sign-in required')
-  }
-
-  const decision = decideResourceAccess(staff.role, input.kind)
+  const decision = decideResourceAccess(actor.role, input.kind)
   if (decision !== 'allow') {
     // Same outcome the caller should use when the row is simply missing.
     throw new Error('Record not found')
   }
 
-  return { staffId: staff.id, resourceId }
+  return { staffId: actor.staffId, resourceId }
+}
+
+/**
+ * Same check as authorizeResourceForActor, but resolves the actor itself
+ * from the signed-in session (getCurrentStaff, src/server/get-current-staff.ts),
+ * which reads the role through the caller's own session-bound client, never
+ * the service-role key. If that lookup fails for any reason, getCurrentStaff
+ * already returns role: null, and decideResourceAccess denies a null role,
+ * so a lookup failure here denies — it is never retried with a more
+ * privileged key and never treated as "allow."
+ *
+ * Use this when the caller has no actor of its own yet and the signed-in
+ * session itself is the source of identity (for example, a server function
+ * that reads a request and has not resolved an actor beforehand).
+ */
+export async function authorizeResource(input: { kind: ResourceKind; id: string }): Promise<{
+  staffId: string
+  resourceId: string
+}> {
+  const staff = await getCurrentStaff()
+  if (!staff?.id) {
+    throw new Error('Sign-in required')
+  }
+
+  return authorizeResourceForActor({ staffId: staff.id, role: staff.role }, input)
 }

@@ -5,7 +5,8 @@
 
 import { createServerFn } from '@tanstack/react-start'
 
-import { readPlayerRosterForStaff, type PlayerRosterView } from '../services/playerRosterService'
+import { getCurrentStaff } from './get-current-staff'
+import { readPlayerRosterForStaff, type PlayerRosterView, type StaffActor } from '../services/playerRosterService'
 
 export type PlayerRosterResponse = { ok: true; player: PlayerRosterView } | { ok: false; error: string }
 
@@ -48,7 +49,12 @@ export const getPlayerRoster = createServerFn({ method: 'GET' })
     }
 
     try {
-      const result = await readPlayerRosterForStaff(parsed.playerId)
+      // The route resolves who is asking and hands it to the service as
+      // ordinary data — the service itself never reads a session.
+      const staff = await getCurrentStaff()
+      const actor: StaffActor = { staffId: staff.id, role: staff.role }
+
+      const result = await readPlayerRosterForStaff(actor, parsed.playerId)
       switch (result.outcome) {
         case 'missing_id':
           return { ok: false, error: 'Player id is not valid.' }
