@@ -3,6 +3,7 @@
 // Flow: read JSON -> validate (no persistence yet) -> 201 stub or 400/422 error envelope.
 
 import { createFileRoute } from '@tanstack/react-router'
+import { csrfBlockResponse } from '#/server/csrf'
 import { validateEvaluationRequest } from '#/server/validation/evaluation-payload'
 import type { ErrorDetail } from '#/server/validation/field-errors'
 
@@ -14,6 +15,11 @@ export const Route = createFileRoute('/api/evaluations')({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        // 1) CSRF/origin check first. A blocked request stops here, before any
+        // validation or write (src/server/csrf.ts, docs/security/csrf-defense-notes.md).
+        const blocked = csrfBlockResponse(request)
+        if (blocked) return blocked
+
         // 400: wrong content type or empty / non-JSON body. Field checks never start.
         const contentType = request.headers.get('content-type') ?? ''
         if (!contentType.includes('application/json')) {
